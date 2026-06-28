@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sin conexión — EncuentroVE</title>
+    <meta name="theme-color" content="#dc2626" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #fff7f7;
+        color: #1a1a1a;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1.5rem;
+        text-align: center;
+      }
+
+      .logo-ring {
+        width: 88px;
+        height: 88px;
+        border-radius: 50%;
+        background: #dc2626;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 0 0 8px #fecaca;
+      }
+
+      .logo-ring svg {
+        width: 44px;
+        height: 44px;
+        fill: none;
+        stroke: #fff;
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #dc2626;
+        margin-bottom: 0.5rem;
+        letter-spacing: -0.01em;
+      }
+
+      .brand {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 1.75rem;
+      }
+
+      p {
+        font-size: 1rem;
+        color: #4b5563;
+        line-height: 1.6;
+        max-width: 320px;
+        margin-bottom: 2rem;
+      }
+
+      .tip {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        max-width: 340px;
+        font-size: 0.875rem;
+        color: #7f1d1d;
+        line-height: 1.5;
+        margin-bottom: 2rem;
+      }
+
+      .tip strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: #dc2626;
+      }
+
+      button {
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      button:hover { background: #b91c1c; }
+      button:active { background: #991b1b; }
+
+      footer {
+        position: absolute;
+        bottom: 1.5rem;
+        font-size: 0.75rem;
+        color: #9ca3af;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo-ring">
+      <svg viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </div>
+
+    <h1>Sin conexión</h1>
+    <p class="brand">EncuentroVE — Portal de Emergencia</p>
+
+    <p>
+      No hay acceso a internet en este momento. La búsqueda de personas
+      requiere conexión para mostrar los datos más recientes.
+    </p>
+
+    <div class="tip">
+      <strong>Consejo de emergencia</strong>
+      Busca una red Wi-Fi disponible o activa los datos móviles y
+      vuelve a intentarlo. Cada segundo cuenta.
+    </div>
+
+    <button onclick="location.reload()">Reintentar</button>
+
+    <footer>EncuentroVE &copy; 2025</footer>
+  </body>
+</html>

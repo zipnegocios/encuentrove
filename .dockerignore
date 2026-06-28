@@ -1,0 +1,18 @@
+node_modules
+**/node_modules
+**/dist
+**/.expo
+**/.turbo
+.git
+.local
+.agents
+.config
+.cache
+*.log
+
+# App movil no se construye en esta imagen
+artifacts/encuentrove-mobile
+
+# El APK se monta como volumen persistente en runtime, no se commitea ni se
+# hornea en la imagen (ver deploy/docker-entrypoint.sh y Dockerfile).
+artifacts/encuentrove-web/public/downloads/*.apk
