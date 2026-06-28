@@ -100,12 +100,23 @@ En `index.html`: agregar `<meta property="og:url" content="https://encuentrove.o
 
 Pequeño complemento natural al punto 2 (sin el cual la pestaña del navegador no combina con lo que se comparte): `useEffect` que setea `document.title` a `${ESTADO_LABEL}: ${nombre} — EncuentroVE` cuando carga el `ser`, y lo revierte al título genérico en cleanup. No se toca `/buscar` ni ningún otro meta tag por página — eso quedó fuera de alcance.
 
+### 8. Botones de compartir (UI)
+
+Adenda al pilar "Social Sharing": lo anterior asegura que un link compartido se vea bien; esto es la UI para iniciar el compartir desde la app.
+
+- Nuevo componente `src/components/ShareButtons.tsx`, props `{ title, text, url }` (`url` siempre absoluta).
+  - Si `navigator.share` existe (móvil — la mayoría del tráfico esperado): un botón "Compartir" que invoca la hoja nativa del sistema (incluye WhatsApp, Telegram, SMS, lo que esté instalado, sin tener que listar cada app).
+  - Si no existe (desktop): fila de botones explícitos — WhatsApp (`wa.me`), Facebook (`facebook.com/sharer/sharer.php`), X/Twitter (`twitter.com/intent/tweet`), y "Copiar link" (`navigator.clipboard`, confirmación vía el `useToast` ya existente en `src/hooks/use-toast.ts`).
+- `DetallePage.tsx`: se renderiza debajo del nombre/estado de la persona, con el mismo `title`/`text` que ya construye `og.ts` para esa persona (estado + nombre, "visto por última vez en {zona}. Ayúdanos a difundir.") — consistencia entre lo que se comparte y la vista previa que generará el bot.
+- `HomePage.tsx` y `BuscarPage.tsx`: fila modesta justo antes del `Footer`, con el título/descripción genéricos del sitio (mismos textos que el OG estático de `index.html`).
+
 ## Manejo de errores
 
 - Backend Java no responde (timeout/502) en `/api/og/ser/:id` → fallback al OG genérico, igual.
 - Backend Java no responde en `/sitemap.xml` → sitemap solo con rutas estáticas.
 - `:id` no existe en el feed → mismo fallback genérico que un error de red (no se distingue "no encontrado" de "error", para mantener la ruta simple).
 - Caché del feed (`getFeedCached`) nunca lanza — si el fetch falla, devuelve `[]` y loggea con `logger.warn`, igual que el patrón ya usado en `watches.ts`.
+- `navigator.share`/`navigator.clipboard` ausentes (navegador viejo o contexto no seguro sin HTTPS): `ShareButtons` no debe romper la página — verificar soporte con `typeof` antes de usar cada API y mostrar siempre al menos los links de WhatsApp/Facebook/X como red de seguridad.
 
 ## Verificación
 
