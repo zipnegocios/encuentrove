@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin, User, PawPrint, Calendar, AlertCircle, HeartPulse, ShieldCheck, Activity, ZoomIn, X } from "lucide-react";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
+import { ShareButtons } from "@/components/ShareButtons";
 
 const STATUS_LABELS: Record<EstadoPersona, string> = {
   BUSCADO: "Buscado/a",
@@ -240,6 +241,13 @@ export default function DetallePage() {
                     </>
                   )}
                 </div>
+
+                <ShareButtons
+                  className="mt-4 flex justify-center md:justify-start"
+                  title={`${STATUS_LABELS[ser.estadoActual]}: ${nombreCompleto} — EncuentroVE`}
+                  text={`${ser.ubicacionActual.nombre_lugar ? `Visto por última vez en ${ser.ubicacionActual.nombre_lugar}. ` : ""}Ayúdanos a difundir y encontrarlo/a.`}
+                  url={`https://encuentrove.online/ser/${encodeURIComponent(ser.id)}`}
+                />
               </div>
             </div>
 

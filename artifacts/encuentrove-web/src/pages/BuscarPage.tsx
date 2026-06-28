@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
+import { ShareButtons } from "@/components/ShareButtons";
 
 const STATUS_LABELS: Record<EstadoPersona, string> = {
   BUSCADO: "Buscado/a",
@@ -275,6 +276,16 @@ export default function BuscarPage() {
             )}
           </>
         )}
+
+        <div className="mt-12 max-w-3xl mx-auto text-center">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Ayuda a difundir EncuentroVE</p>
+          <ShareButtons
+            className="flex justify-center"
+            title="EncuentroVE — Portal de Emergencia"
+            text="Busca a tus seres queridos en zonas de emergencia."
+            url="https://encuentrove.online/buscar"
+          />
+        </div>
       </main>
 
       <Footer />

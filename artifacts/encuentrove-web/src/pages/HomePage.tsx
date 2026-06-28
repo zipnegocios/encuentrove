@@ -8,6 +8,7 @@ import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { EmpresasColaboradoras } from "@/components/EmpresasColaboradoras";
 import { DescargaApp } from "@/components/DescargaApp";
+import { ShareButtons } from "@/components/ShareButtons";
 
 export default function HomePage() {
   const [, setLocation] = useLocation();
@@ -164,6 +165,16 @@ export default function HomePage() {
 
         <EmpresasColaboradoras />
         <DescargaApp />
+
+        <div className="mt-16 max-w-3xl mx-auto text-center">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Ayuda a difundir EncuentroVE</p>
+          <ShareButtons
+            className="flex justify-center"
+            title="EncuentroVE — Portal de Emergencia"
+            text="Busca a tus seres queridos en zonas de emergencia."
+            url="https://encuentrove.online/"
+          />
+        </div>
       </main>
 
       <Footer />
