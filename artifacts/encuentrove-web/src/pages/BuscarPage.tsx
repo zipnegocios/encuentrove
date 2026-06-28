@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Search, Filter, Loader2, MapPin, User, PawPrint, Calendar } from "lucide-react";
-import { searchSeres, getZonas, SearchParams } from "@/api";
+import { searchSeres, getZonas, SearchParams, meetsPredictiveThreshold } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado, TipoSer, EstadoPersona } from "@/data/types";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ export default function BuscarPage() {
   // Usa replace para no llenar el historial con una entrada por cada tecla.
   React.useEffect(() => {
     if (query === queryUrl) return;
-    if (query.length > 0 && query.length < 3) return;
+    if (!meetsPredictiveThreshold(query)) return;
 
     const timer = setTimeout(() => {
       const p = new URLSearchParams(searchString);

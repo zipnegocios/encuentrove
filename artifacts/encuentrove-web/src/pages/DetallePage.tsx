@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useRoute, Link } from "wouter";
-import { getSerById } from "@/api";
+import { getSerById, getMovimientos } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado, EstadoPersona, MovimientoConUbicacion } from "@/data/types";
 import { Button } from "@/components/ui/button";
@@ -125,6 +125,7 @@ export default function DetallePage() {
   const id = params?.id;
 
   const [ser, setSer] = React.useState<SerVivienteConEstado | null>(null);
+  const [movimientos, setMovimientos] = React.useState<MovimientoConUbicacion[]>([]);
   const [loading, setLoading] = React.useState(true);
   const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
@@ -132,18 +133,23 @@ export default function DetallePage() {
   React.useEffect(() => {
     if (id) {
       setLoading(true);
-      getSerById(id).then(data => {
+      Promise.all([getSerById(id), getMovimientos(id)]).then(([data, movs]) => {
         setSer(data);
+        setMovimientos(movs);
         setLoading(false);
       });
     }
   }, [id]);
 
   // Llego un push del feed en vivo — refresca a esta misma persona en
-  // silencio (puede haber cambiado de estado mientras la pagina esta abierta).
+  // silencio (puede haber cambiado de estado, o sumado un movimiento nuevo,
+  // mientras la pagina esta abierta).
   React.useEffect(() => {
     if (!id || !liveSnapshot) return;
-    getSerById(id).then(setSer);
+    Promise.all([getSerById(id), getMovimientos(id)]).then(([data, movs]) => {
+      setSer(data);
+      setMovimientos(movs);
+    });
   }, [id, liveSnapshot]);
 
   // Combina con el OG dinamico que sirve el api-server a bots sociales
@@ -319,7 +325,7 @@ export default function DetallePage() {
         {/* Movement History */}
         <h3 className="text-xl font-bold tracking-tight mb-6">Historial de Movimientos</h3>
         <div className="relative border-l-2 border-muted ml-4 md:ml-6 space-y-8 pb-8">
-          {ser.movimientos.map((mov, idx) => {
+          {movimientos.map((mov, idx) => {
             const isLatest = idx === 0;
             const movStatusColor = STATUS_COLORS[mov.estado_persona];
 

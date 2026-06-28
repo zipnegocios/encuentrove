@@ -82,7 +82,7 @@ function sortAndDedupe(items: ApiFeedItem[]): ApiFeedItem[] {
   return Array.from(seen.values());
 }
 
-async function fetchAllFeedItems(): Promise<ApiFeedItem[]> {
+async function fetchAllFeedItemsSorted(): Promise<ApiFeedItem[]> {
   const [personaResult, animalResult] = await Promise.allSettled([
     fetchFeedItems("PERSONA"),
     fetchFeedItems("ANIMAL"),
@@ -94,22 +94,28 @@ async function fetchAllFeedItems(): Promise<ApiFeedItem[]> {
     ...(personaResult.status === "fulfilled" ? personaResult.value : []),
     ...(animalResult.status === "fulfilled" ? animalResult.value : []),
   ];
-  return sortAndDedupe(all);
+  return all.sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime());
 }
 
 let snapshot: ApiFeedItem[] = [];
 let snapshotJson = "";
+// Sin deduplicar — el historial de movimientos de una persona (DetallePage)
+// necesita TODOS sus eventos, no solo el mas reciente (que es lo unico que
+// conserva `snapshot`, pensado para la lista/feed en vivo).
+let rawSnapshot: ApiFeedItem[] = [];
 const listeners = new Set<(items: ApiFeedItem[]) => void>();
 
 async function poll(): Promise<void> {
-  let items: ApiFeedItem[];
+  let sorted: ApiFeedItem[];
   try {
-    items = await fetchAllFeedItems();
+    sorted = await fetchAllFeedItemsSorted();
   } catch (err) {
     logger.warn({ err }, "feed poll: backend unreachable, keeping last snapshot");
     return;
   }
 
+  rawSnapshot = sorted;
+  const items = sortAndDedupe(sorted);
   const json = JSON.stringify(items);
   if (json === snapshotJson) return;
 
@@ -135,6 +141,13 @@ export async function getFeedCached(): Promise<ApiFeedItem[]> {
 export function subscribeFeed(listener: (items: ApiFeedItem[]) => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+// Historial completo (todos los movimientos, no solo el ultimo) de una
+// persona/animal puntual, para la pagina de detalle. Ya viene ordenado
+// descendente por fecha (ver poll()).
+export function getMovementHistory(routeId: string): ApiFeedItem[] {
+  return rawSnapshot.filter((item) => deriveRouteId(item) === routeId || item.cedula === routeId);
 }
 
 export async function buildStateMap(): Promise<Map<string, string>> {

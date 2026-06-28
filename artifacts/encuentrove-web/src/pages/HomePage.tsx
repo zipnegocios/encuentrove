@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Search, MapPin, AlertCircle, HeartPulse, Home as HomeIcon, HeartHandshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getEstadisticas, searchSeres } from "@/api";
+import { getEstadisticas, searchSeres, meetsPredictiveThreshold } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado } from "@/data/types";
 import { Isotype } from "@/components/brand/Isotype";
@@ -26,11 +26,12 @@ export default function HomePage() {
     getEstadisticas().then(setStats);
   }, [liveSnapshot]);
 
-  // Busqueda predictiva: a partir de 3 caracteres muestra un preview de
-  // resultados debajo del buscador, sin necesidad de enviar el formulario.
+  // Busqueda predictiva: a partir de 3 caracteres (o 5 digitos si se esta
+  // tipeando una cedula) muestra un preview de resultados debajo del
+  // buscador, sin necesidad de enviar el formulario.
   React.useEffect(() => {
     const q = query.trim();
-    if (q.length < 3) {
+    if (!meetsPredictiveThreshold(q) || q.length === 0) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -71,7 +72,7 @@ export default function HomePage() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background">
       {/* Hero Section */}
-      <div className="relative pt-24 pb-16 md:pt-32 md:pb-24 flex items-center justify-center overflow-hidden">
+      <div className="relative pt-24 pb-16 md:pt-32 md:pb-24 flex items-center justify-center">
         {/* Background gradient & noise */}
         <div className="absolute inset-0 bg-[#0f3b25]">
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle at center, #2ECC71 0%, transparent 70%)' }}></div>
@@ -112,7 +113,7 @@ export default function HomePage() {
             </div>
 
             {showSuggestions && (
-              <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border overflow-hidden text-left z-20">
+              <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border overflow-hidden text-left z-50">
                 {suggestions.length > 0 ? (
                   <>
                     {suggestions.map((ser) => (

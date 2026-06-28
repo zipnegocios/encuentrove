@@ -15,7 +15,7 @@ import {
   TipoSer,
 } from '../data/types';
 import { apiBase, S3_BASE_URL, API_BASE_URL } from '../lib/env';
-import { getLiveSnapshot } from '../lib/liveFeed';
+import { getLiveSnapshot, fetchMovementHistory } from '../lib/liveFeed';
 
 export { S3_BASE_URL, API_BASE_URL };
 
@@ -75,14 +75,31 @@ export interface SearchResult {
 const normalizeStr = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
+const onlyDigits = (s: string) => s.replace(/\D/g, '');
+
+// Umbral minimo para disparar una busqueda predictiva: si el usuario esta
+// escribiendo numeros (cedula), se espera a 5 digitos antes de buscar (una
+// busqueda parcial de 1-4 digitos seria demasiado amplia); si es texto
+// (nombre/apellido), 3 caracteres alcanza. Un campo vacio siempre "cumple"
+// para poder limpiar los resultados al borrar el input.
+export function meetsPredictiveThreshold(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return true;
+  const isNumeric = /^\d+$/.test(trimmed);
+  return isNumeric ? trimmed.length >= 5 : trimmed.length >= 3;
+}
+
 export async function searchSeres(params: SearchParams): Promise<SearchResult> {
   let filtered = await getAll();
 
   if (params.query) {
     const q = normalizeStr(params.query);
+    const qDigits = onlyDigits(params.query);
     filtered = filtered.filter(ser => {
       const nombre = normalizeStr(`${ser.nombre ?? ''} ${ser.apellido ?? ''}`);
-      return nombre.includes(q) || ser.cedula === params.query;
+      if (nombre.includes(q)) return true;
+      if (qDigits.length >= 5 && ser.cedula && onlyDigits(ser.cedula).includes(qDigits)) return true;
+      return false;
     });
   }
   if (params.tipo) filtered = filtered.filter(s => s.tipo_ser === params.tipo);
@@ -116,6 +133,12 @@ export async function getUbicaciones(): Promise<Ubicacion[]> {
 }
 
 export async function getMovimientos(id_ser_viviente: string): Promise<MovimientoConUbicacion[]> {
+  // El snapshot en vivo solo conserva el ultimo movimiento por persona (ver
+  // lib/liveFeed.ts) — el historial completo se pide aparte al api-server.
+  if (getLiveSnapshot()) {
+    const history = await fetchMovementHistory(id_ser_viviente);
+    if (history.length > 0) return history;
+  }
   const ser = await getSerById(id_ser_viviente);
   return ser?.movimientos ?? [];
 }

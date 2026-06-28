@@ -71,12 +71,15 @@ function contactoLabel(u: ApiUsuario | undefined): string {
   return [nombre, u.telefono].filter(Boolean).join(" — ");
 }
 
-function mapFeedItem(item: ApiFeedItem): SerVivienteConEstado {
+function deriveId(item: ApiFeedItem): string {
   // Use cedula as the routing ID for personas; composite for animals without cedula.
-  const id = item.cedula
+  return item.cedula
     ? item.cedula.replace(/\s+/g, "-")
     : `${item.tipoSer}-${item.nombre ?? "SIN_NOMBRE"}-${item.idMovimiento}`.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+}
 
+function mapMovimiento(item: ApiFeedItem): MovimientoConUbicacion {
+  const id = deriveId(item);
   const ubicacion: Ubicacion = {
     id: item.idMovimiento,
     nombre_lugar: item.nombreLugar,
@@ -84,7 +87,7 @@ function mapFeedItem(item: ApiFeedItem): SerVivienteConEstado {
     zona: item.nombreLugar,
   };
 
-  const mov: MovimientoConUbicacion = {
+  return {
     id: item.idMovimiento,
     id_ser_viviente: id,
     id_ubicacion: item.idMovimiento,
@@ -98,6 +101,17 @@ function mapFeedItem(item: ApiFeedItem): SerVivienteConEstado {
     ubicacion,
     fotoUrl: buildFotoUrl(item.urlFoto),
   };
+}
+
+function mapFeedItem(item: ApiFeedItem): SerVivienteConEstado {
+  const id = deriveId(item);
+  const ubicacion: Ubicacion = {
+    id: item.idMovimiento,
+    nombre_lugar: item.nombreLugar,
+    geolocalizacion_red: null,
+    zona: item.nombreLugar,
+  };
+  const mov = mapMovimiento(item);
 
   return {
     id,
@@ -188,4 +202,18 @@ export function subscribeLiveFeed(listener: Listener): () => void {
 export function getLiveSnapshot(): SerVivienteConEstado[] | null {
   connect();
   return snapshot;
+}
+
+// Historial completo de movimientos de una persona/animal puntual (no solo
+// el ultimo, que es lo unico que trae el snapshot en vivo de mas arriba).
+// Ver GET /api/movimientos/:id en api-server (lib/feed.ts: getMovementHistory).
+export async function fetchMovementHistory(id: string): Promise<MovimientoConUbicacion[]> {
+  try {
+    const res = await fetch(`${apiBase()}/api/movimientos/${encodeURIComponent(id)}`);
+    if (!res.ok) return [];
+    const data: { success: boolean; data: ApiFeedItem[] } = await res.json();
+    return (data.data ?? []).map(mapMovimiento);
+  } catch {
+    return [];
+  }
 }
