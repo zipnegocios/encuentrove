@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { getEstadisticas, searchSeres, meetsPredictiveThreshold } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado } from "@/data/types";
+import { buildSerPath } from "@/lib/slug";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { EmpresasColaboradoras } from "@/components/EmpresasColaboradoras";
@@ -117,7 +118,7 @@ export default function HomePage() {
                 {suggestions.length > 0 ? (
                   <>
                     {suggestions.map((ser) => (
-                      <Link key={ser.id} href={`/ser/${ser.id}`}>
+                      <Link key={ser.id} href={buildSerPath(ser)}>
                         <div
                           className="flex items-center gap-3 px-4 py-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
                           onClick={() => setShowSuggestions(false)}

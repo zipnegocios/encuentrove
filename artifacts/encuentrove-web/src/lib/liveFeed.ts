@@ -204,15 +204,56 @@ export function getLiveSnapshot(): SerVivienteConEstado[] | null {
   return snapshot;
 }
 
+// Forma normalizada que devuelve GET /api/movimientos/:id — ver
+// artifacts/api-server/src/lib/feed.ts (NormalizedMovimiento). Es la misma
+// forma sin importar si vino del historial real del backend Java (cuando
+// hay cedula) o del respaldo interno (snapshot crudo, para SIN_CEDULA).
+interface NormalizedMovimiento {
+  id: number;
+  estadoPersona: string;
+  condicionMedica: string | null;
+  conFamiliar: boolean;
+  urlFoto: string | null;
+  fechaRegistro: string;
+  idTrx: string;
+  nombreLugar: string;
+  zona: string;
+  contacto: string;
+}
+
+function mapNormalizedMovimiento(mov: NormalizedMovimiento, serId: string): MovimientoConUbicacion {
+  const ubicacion: Ubicacion = {
+    id: mov.id,
+    nombre_lugar: mov.nombreLugar,
+    geolocalizacion_red: null,
+    zona: mov.zona,
+  };
+
+  return {
+    id: mov.id,
+    id_ser_viviente: serId,
+    id_ubicacion: mov.id,
+    id_persona_dueno_telefono: mov.contacto,
+    estado_persona: mov.estadoPersona as EstadoPersona,
+    condicion_medica: mov.condicionMedica,
+    con_familiar: mov.conFamiliar,
+    url_foto: mov.urlFoto,
+    fecha_registro: mov.fechaRegistro,
+    id_trx: mov.idTrx,
+    ubicacion,
+    fotoUrl: mov.urlFoto,
+  };
+}
+
 // Historial completo de movimientos de una persona/animal puntual (no solo
 // el ultimo, que es lo unico que trae el snapshot en vivo de mas arriba).
-// Ver GET /api/movimientos/:id en api-server (lib/feed.ts: getMovementHistory).
+// Ver GET /api/movimientos/:id en api-server (lib/feed.ts).
 export async function fetchMovementHistory(id: string): Promise<MovimientoConUbicacion[]> {
   try {
     const res = await fetch(`${apiBase()}/api/movimientos/${encodeURIComponent(id)}`);
     if (!res.ok) return [];
-    const data: { success: boolean; data: ApiFeedItem[] } = await res.json();
-    return (data.data ?? []).map(mapMovimiento);
+    const data: { success: boolean; data: NormalizedMovimiento[] } = await res.json();
+    return (data.data ?? []).map((mov) => mapNormalizedMovimiento(mov, id));
   } catch {
     return [];
   }

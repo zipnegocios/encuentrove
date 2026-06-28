@@ -4,6 +4,7 @@ import { Search, Filter, Loader2, MapPin, User, PawPrint, Calendar } from "lucid
 import { searchSeres, getZonas, SearchParams, meetsPredictiveThreshold } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado, TipoSer, EstadoPersona } from "@/data/types";
+import { buildSerPath } from "@/lib/slug";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -234,7 +235,7 @@ export default function BuscarPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {results.map((ser) => (
-                <Link key={ser.id} href={`/ser/${ser.id}`}>
+                <Link key={ser.id} href={buildSerPath(ser)}>
                   <div className="group cursor-pointer h-full">
                     <Card className="overflow-hidden h-full border-border/50 shadow-sm hover:shadow-lg transition-all duration-300 rounded-2xl flex flex-col bg-white hover:-translate-y-1">
                       <div className="relative h-48 bg-muted overflow-hidden flex items-center justify-center">

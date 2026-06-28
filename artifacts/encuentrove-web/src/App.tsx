@@ -23,7 +23,7 @@ function Router() {
     <Switch>
       <Route path="/" component={HomePage} />
       <Route path="/buscar" component={BuscarPage} />
-      <Route path="/ser/:id" component={DetallePage} />
+      <Route path="/ser/:id/:slug?" component={DetallePage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -8,6 +8,7 @@ import { ArrowLeft, MapPin, User, PawPrint, Calendar, AlertCircle, HeartPulse, S
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { ShareButtons } from "@/components/ShareButtons";
+import { buildSerPath } from "@/lib/slug";
 
 const STATUS_LABELS: Record<EstadoPersona, string> = {
   BUSCADO: "Buscado/a",
@@ -21,6 +22,15 @@ const STATUS_COLORS: Record<EstadoPersona, string> = {
   LOCALIZADO_BIEN: "hsl(var(--status-localizado))",
   EN_REFUGIO: "hsl(var(--status-refugio))",
   NECESITA_ASISTENCIA_MEDICA: "hsl(var(--status-medica))",
+};
+
+// Frases para el texto compartido (ShareButtons) — mas naturales en una
+// oracion que el label de UI (STATUS_LABELS), que es mas bien una etiqueta.
+const SHARE_PHRASES: Record<EstadoPersona, string> = {
+  BUSCADO: "esta siendo buscado/a",
+  LOCALIZADO_BIEN: "fue localizado/a y esta bien",
+  EN_REFUGIO: "esta en un refugio",
+  NECESITA_ASISTENCIA_MEDICA: "necesita asistencia medica",
 };
 
 function PhotoViewer({ fotoUrl, nombre }: { fotoUrl: string; nombre: string }) {
@@ -121,7 +131,7 @@ function MovimientoCard({ mov, isLatest }: { mov: MovimientoConUbicacion; isLate
 }
 
 export default function DetallePage() {
-  const [, params] = useRoute("/ser/:id");
+  const [, params] = useRoute("/ser/:id/:slug?");
   const id = params?.id;
 
   const [ser, setSer] = React.useState<SerVivienteConEstado | null>(null);
@@ -261,8 +271,8 @@ export default function DetallePage() {
                 <ShareButtons
                   className="mt-4 flex justify-center md:justify-start"
                   title={`${STATUS_LABELS[ser.estadoActual]}: ${nombreCompleto} — EncuentroVE`}
-                  text={`${ser.ubicacionActual.nombre_lugar ? `Visto por última vez en ${ser.ubicacionActual.nombre_lugar}. ` : ""}Ayúdanos a difundir y encontrarlo/a.`}
-                  url={`https://encuentrove.online/ser/${encodeURIComponent(ser.id)}`}
+                  text={`${isPersona ? nombreCompleto : `${nombreCompleto}${ser.raza ? ` (${ser.raza})` : ""}`} ${SHARE_PHRASES[ser.estadoActual]}${ser.ubicacionActual.nombre_lugar ? ` en ${ser.ubicacionActual.nombre_lugar}` : ""}. Ayúdanos a difundir y encontrarlo/a.`}
+                  url={`https://encuentrove.online${buildSerPath(ser)}`}
                 />
               </div>
             </div>

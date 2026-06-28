@@ -59,6 +59,107 @@ export function buildFotoUrl(urlFoto: string | undefined): string | null {
   return `${S3_BASE_URL}/${urlFoto}`;
 }
 
+function contactoLabel(u: ApiUsuario | undefined): string {
+  if (!u) return "";
+  const nombre = u.nombreCompleto ?? `${u.nombre ?? ""} ${u.apellido ?? ""}`.trim();
+  return [nombre, u.telefono].filter(Boolean).join(" — ");
+}
+
+// ─── Historial real (backend Java) ─────────────────────────────────────────
+// El feed (/seres-vivientes/feed) no trae el UUID real de la persona/animal,
+// solo idMovimiento. El historial real solo es alcanzable via:
+//   cedula -> GET /seres-vivientes/cedula/{cedula}  -> { data: { id: UUID } }
+//   UUID   -> GET /seres-vivientes/historial/{UUID} -> { data: { movimientos } }
+// Esto solo funciona si hay una cedula real on file (404 para "SIN_CEDULA",
+// que es lo unico que tienen los animales y varias personas hoy). Para esos
+// casos, getMovementHistory() (mas abajo) sigue siendo el respaldo.
+
+export interface NormalizedMovimiento {
+  id: number;
+  estadoPersona: string;
+  condicionMedica: string | null;
+  conFamiliar: boolean;
+  urlFoto: string | null;
+  fechaRegistro: string;
+  idTrx: string;
+  nombreLugar: string;
+  zona: string;
+  contacto: string;
+}
+
+interface HistorialUsuario {
+  nombre?: string;
+  apellido?: string;
+  telefono?: string;
+}
+
+interface HistorialMovimiento {
+  id: number;
+  ubicacion?: { nombreLugar?: string; zona?: string };
+  usuario?: HistorialUsuario;
+  estadoPersona: string;
+  condicionMedica?: string;
+  conFamiliar: boolean;
+  urlFoto?: string;
+  fechaRegistro: string;
+  idTrx: string;
+}
+
+function contactoFromHistorialUsuario(u: HistorialUsuario | undefined): string {
+  if (!u) return "";
+  const nombre = `${u.nombre ?? ""} ${u.apellido ?? ""}`.trim();
+  return [nombre, u.telefono].filter(Boolean).join(" — ");
+}
+
+const PLACEHOLDER_CEDULAS = new Set(["", "SIN_CEDULA", "NULL", "-"]);
+
+async function fetchUuidByCedula(cedula: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${JAVA_BACKEND}/api/v1/seres-vivientes/cedula/${encodeURIComponent(cedula)}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { success: boolean; data?: { id?: string } };
+    return data.success ? data.data?.id ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+// Devuelve null si no hay cedula real, o si el backend real no responde —
+// en ambos casos el caller (routes/movimientos.ts) cae al respaldo interno.
+export async function fetchHistorialReal(cedula: string | undefined): Promise<NormalizedMovimiento[] | null> {
+  const trimmed = (cedula ?? "").trim();
+  if (PLACEHOLDER_CEDULAS.has(trimmed.toUpperCase())) return null;
+
+  const uuid = await fetchUuidByCedula(trimmed);
+  if (!uuid) return null;
+
+  try {
+    const res = await fetch(`${JAVA_BACKEND}/api/v1/seres-vivientes/historial/${uuid}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json() as { success: boolean; data?: { movimientos: HistorialMovimiento[] } };
+    if (!data.success || !data.data) return null;
+
+    return data.data.movimientos.map((mov): NormalizedMovimiento => ({
+      id: mov.id,
+      estadoPersona: mov.estadoPersona,
+      condicionMedica: mov.condicionMedica || null,
+      conFamiliar: mov.conFamiliar,
+      urlFoto: buildFotoUrl(mov.urlFoto),
+      fechaRegistro: mov.fechaRegistro,
+      idTrx: mov.idTrx,
+      nombreLugar: mov.ubicacion?.nombreLugar ?? "",
+      zona: mov.ubicacion?.zona ?? "",
+      contacto: contactoFromHistorialUsuario(mov.usuario),
+    }));
+  } catch {
+    return null;
+  }
+}
+
 async function fetchFeedItems(tipo: "PERSONA" | "ANIMAL"): Promise<ApiFeedItem[]> {
   const url = `${JAVA_BACKEND}/api/v1/seres-vivientes/feed?tipoSer=${tipo}&page=0&size=500`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
@@ -143,11 +244,26 @@ export function subscribeFeed(listener: (items: ApiFeedItem[]) => void): () => v
   return () => listeners.delete(listener);
 }
 
-// Historial completo (todos los movimientos, no solo el ultimo) de una
-// persona/animal puntual, para la pagina de detalle. Ya viene ordenado
-// descendente por fecha (ver poll()).
-export function getMovementHistory(routeId: string): ApiFeedItem[] {
-  return rawSnapshot.filter((item) => deriveRouteId(item) === routeId || item.cedula === routeId);
+// Respaldo cuando fetchHistorialReal() no aplica (sin cedula real) o falla:
+// historial completo (todos los movimientos, no solo el ultimo) de una
+// persona/animal puntual, filtrando el snapshot crudo en memoria. Ya viene
+// ordenado descendente por fecha (ver poll()), pero limitado a la ventana de
+// polling (ultimos ~500 movimientos por tipo).
+export function getMovementHistory(routeId: string): NormalizedMovimiento[] {
+  return rawSnapshot
+    .filter((item) => deriveRouteId(item) === routeId || item.cedula === routeId)
+    .map((item): NormalizedMovimiento => ({
+      id: item.idMovimiento,
+      estadoPersona: item.estadoActual,
+      condicionMedica: item.condicionMedica || null,
+      conFamiliar: item.conFamiliar,
+      urlFoto: buildFotoUrl(item.urlFoto),
+      fechaRegistro: item.fechaRegistro,
+      idTrx: `TRX-${item.idMovimiento}`,
+      nombreLugar: item.nombreLugar ?? "",
+      zona: item.nombreLugar ?? "",
+      contacto: contactoLabel(item.usuarioHito),
+    }));
 }
 
 export async function buildStateMap(): Promise<Map<string, string>> {

@@ -64,6 +64,23 @@ function findItem(items: ApiFeedItem[], id: string): ApiFeedItem | undefined {
   return items.find((item) => deriveRouteId(item) === id || item.cedula === id);
 }
 
+// Mismo slugify que artifacts/encuentrove-web/src/lib/slug.ts — segmento
+// decorativo en la URL (/ser/:id/:slug), nunca se usa para resolver el id.
+function slugify(text: string): string {
+  const slug = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug;
+}
+
+function buildPageUrl(id: string, nombre?: string, apellido?: string): string {
+  const slug = slugify(`${nombre ?? ""} ${apellido ?? ""}`.trim());
+  return slug ? `${SITE_URL}/ser/${encodeURIComponent(id)}/${slug}` : `${SITE_URL}/ser/${encodeURIComponent(id)}`;
+}
+
 router.get("/og/ser/:id", async (req: Request, res: Response) => {
   const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const items = await getFeedCached();
@@ -91,7 +108,7 @@ router.get("/og/ser/:id", async (req: Request, res: Response) => {
       title: `${estadoLabel}: ${nombreCompleto} — EncuentroVE`,
       description: `${lugar} Ayúdanos a difundir y encontrarlo/a.`.trim(),
       image: buildFotoUrl(item.urlFoto) ?? DEFAULT_OG_IMAGE,
-      url: pageUrl,
+      url: buildPageUrl(id, item.nombre, item.apellido),
     }),
   );
 });
@@ -102,7 +119,7 @@ router.get("/sitemap.xml", async (_req: Request, res: Response) => {
   // Some records share a placeholder cedula (e.g. "SIN_CEDULA") when the
   // person's identity is unknown — dedupe so the sitemap doesn't repeat the
   // same /ser/:id url for each of them.
-  const dynamicUrls = [...new Set(items.map((item) => `${SITE_URL}/ser/${encodeURIComponent(deriveRouteId(item))}`))];
+  const dynamicUrls = [...new Set(items.map((item) => buildPageUrl(deriveRouteId(item), item.nombre, item.apellido)))];
 
   const urls = [...staticUrls, ...dynamicUrls]
     .map((url) => `  <url><loc>${escapeXml(url)}</loc></url>`)
