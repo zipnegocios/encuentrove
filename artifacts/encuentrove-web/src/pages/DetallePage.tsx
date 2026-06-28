@@ -135,6 +135,18 @@ export default function DetallePage() {
     }
   }, [id]);
 
+  // Combina con el OG dinamico que sirve el api-server a bots sociales
+  // (ver artifacts/api-server/src/routes/og.ts) para que la pestana del
+  // navegador tambien refleje a quien se esta viendo, no el titulo generico.
+  React.useEffect(() => {
+    if (!ser) return;
+    const nombre = ser.tipo_ser === 'PERSONA' ? `${ser.nombre} ${ser.apellido}` : (ser.nombre ?? 'Animal');
+    document.title = `${STATUS_LABELS[ser.estadoActual]}: ${nombre} — EncuentroVE`;
+    return () => {
+      document.title = 'EncuentroVE — Busca a tus seres queridos';
+    };
+  }, [ser]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background pt-24 pb-12 px-4 flex justify-center">

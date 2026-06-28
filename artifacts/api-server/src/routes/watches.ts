@@ -2,10 +2,9 @@ import { Router, type Request, type Response } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { logger } from "../lib/logger";
+import { buildStateMap } from "../lib/feed";
 
 const router = Router();
-
-const JAVA_BACKEND = (process.env.JAVA_BACKEND_URL ?? "https://heart.encuentrove.online").replace(/\/$/, "");
 
 const ESTADO_LABELS: Record<string, string> = {
   BUSCADO: "Buscado/a",
@@ -57,46 +56,6 @@ const watchesLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-
-interface ApiFeedItem {
-  idMovimiento: number;
-  tipoSer: string;
-  nombre: string;
-  apellido?: string;
-  cedula?: string;
-  estadoActual: string;
-}
-
-function deriveStableKey(item: ApiFeedItem): string {
-  if (item.cedula?.trim()) return item.cedula.trim();
-  return `${item.tipoSer}::${item.nombre ?? ""}::${item.apellido ?? ""}`;
-}
-
-async function fetchFeedItems(tipo: string): Promise<ApiFeedItem[]> {
-  const url = `${JAVA_BACKEND}/api/v1/seres-vivientes/feed?tipoSer=${tipo}&page=0&size=500`;
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) throw new Error(`Feed ${tipo}: HTTP ${res.status}`);
-  const data = await res.json() as { success: boolean; data: ApiFeedItem[] };
-  return data.data ?? [];
-}
-
-async function buildStateMap(): Promise<Map<string, string>> {
-  const [personaResult, animalResult] = await Promise.allSettled([
-    fetchFeedItems("PERSONA"),
-    fetchFeedItems("ANIMAL"),
-  ]);
-  if (personaResult.status === "rejected") throw personaResult.reason;
-  const all: ApiFeedItem[] = [
-    ...personaResult.value,
-    ...(animalResult.status === "fulfilled" ? animalResult.value : []),
-  ];
-  const map = new Map<string, string>();
-  for (const item of all) {
-    const key = deriveStableKey(item);
-    if (!map.has(key)) map.set(key, item.estadoActual);
-  }
-  return map;
-}
 
 async function sendExpoPush(token: string, nombre: string, oldEstado: string, newEstado: string, stableKey: string): Promise<void> {
   const oldLabel = ESTADO_LABELS[oldEstado] ?? oldEstado;

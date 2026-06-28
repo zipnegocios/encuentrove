@@ -39,6 +39,7 @@ COPY --from=builder /app/artifacts/api-server/dist ./api-server/dist
 COPY --from=builder /app/artifacts/encuentrove-web/dist/public /usr/share/nginx/html
 
 COPY deploy/nginx.conf /etc/nginx/http.d/default.conf
+COPY deploy/nginx-maps.conf /etc/nginx/http.d/nginx-maps.conf
 COPY deploy/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh && mkdir -p /usr/share/nginx/html/downloads
 

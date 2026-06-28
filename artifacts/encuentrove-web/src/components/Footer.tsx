@@ -17,8 +17,6 @@ export function Footer() {
             Solutions Systems 2526 C.A.
           </a>{" "}
           — Aplicacion Sin Fines de Lucro.
-          <br />
-          Torre Profesional La California, Av. Francisco de Miranda, Piso 5, Oficina 5-6C, Caracas 1070, Miranda.
         </p>
       </div>
     </footer>

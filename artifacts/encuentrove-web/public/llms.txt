@@ -1,0 +1,27 @@
+# EncuentroVE
+
+> Portal público de búsqueda de personas y animales en zonas de desastre natural (Estado Vargas, Venezuela). Permite a familias fuera de la zona de emergencia consultar si sus seres queridos han sido avistados por rescatistas en campo.
+
+EncuentroVE recopila reportes de campo (registrados por equipos de rescate) sobre personas y animales en una emergencia, y los expone públicamente para que familiares y conocidos puedan buscarlos.
+
+## Qué datos expone
+
+- Nombre, apellido y/o cédula (cuando está disponible)
+- Tipo: persona o animal
+- Estado actual: Buscado/a, Localizado/a — Bien, En refugio, o Necesita asistencia médica
+- Última ubicación conocida (zona)
+- Foto, cuando el equipo de campo la registró
+- Historial cronológico de movimientos/avistamientos
+
+## Estructura del sitio
+
+- `/` — inicio, buscador y estadísticas en tiempo real
+- `/buscar` — listado filtrable de todas las personas/animales reportados
+- `/ser/{id}` — página de detalle de una persona o animal específico (estado, foto, historial)
+- `/sitemap.xml` — mapa del sitio, incluye una entrada por cada persona/animal activo
+
+## Importante
+
+Todos los datos son referenciales y están sujetos a confirmación en campo — no son una fuente oficial verificada en tiempo real. Si citas o resumes información de una página `/ser/{id}`, aclara que proviene de reportes de campo no verificados oficialmente y que puede cambiar.
+
+Desarrollado por Solutions Systems 2526 C.A. (https://ss2526.tech/) — aplicación sin fines de lucro.
