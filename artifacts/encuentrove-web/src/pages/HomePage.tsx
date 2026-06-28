@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, useLocation } from "wouter";
-import { Search, MapPin, AlertCircle, HeartPulse, Home as HomeIcon } from "lucide-react";
+import { Search, MapPin, AlertCircle, HeartPulse, Home as HomeIcon, HeartHandshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getEstadisticas } from "@/api";
@@ -167,6 +167,13 @@ export default function HomePage() {
 
         <EmpresasColaboradoras />
         <DescargaApp />
+
+        <div className="mt-16 max-w-2xl mx-auto text-center bg-white rounded-2xl border p-8 shadow-sm">
+          <HeartHandshake className="w-8 h-8 text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground leading-relaxed">
+            Este servicio nace como una herramienta de apoyo ciudadano ante la emergencia. No tenemos fines comerciales ni lucrativos. Nuestro unico objetivo es conectar personas y ayudar a que mascotas y seres queridos regresen a casa. Todo el desarrollo, la app y el mantenimiento son costeados por nuestro equipo, sin cobrar ni un solo centavo a los usuarios.
+          </p>
+        </div>
 
         <div className="mt-16 max-w-3xl mx-auto text-center">
           <p className="text-sm font-medium text-muted-foreground mb-3">Ayuda a difundir EncuentroVE</p>

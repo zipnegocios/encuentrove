@@ -41,13 +41,11 @@ COPY --from=builder /app/artifacts/encuentrove-web/dist/public /usr/share/nginx/
 COPY deploy/nginx.conf /etc/nginx/http.d/default.conf
 COPY deploy/nginx-maps.conf /etc/nginx/http.d/nginx-maps.conf
 COPY deploy/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh && mkdir -p /usr/share/nginx/html/downloads
+RUN chmod +x /docker-entrypoint.sh
 
-# El APK (artifacts/encuentrove-web/public/downloads/app-release.apk) esta en
-# .gitignore por su tamano y NO se incluye en este build. Para que el link de
-# descarga del Home funcione y sobreviva a los redeploys, monta un volumen
-# persistente de EasyPanel en /usr/share/nginx/html/downloads y sube el .apk
-# ahi una sola vez (no se pierde al reconstruir la imagen).
+# El APK de Android ya no se sirve desde este contenedor — el boton de
+# descarga del Home apunta directo a una URL de S3 (ver APK_URL en
+# artifacts/encuentrove-web/src/components/DescargaApp.tsx).
 
 ENV NODE_ENV=production
 
