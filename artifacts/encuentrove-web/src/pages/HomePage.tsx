@@ -3,8 +3,9 @@ import { Link, useLocation } from "wouter";
 import { Search, MapPin, AlertCircle, HeartPulse, Home as HomeIcon, HeartHandshake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getEstadisticas } from "@/api";
+import { getEstadisticas, searchSeres } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
+import { SerVivienteConEstado } from "@/data/types";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { EmpresasColaboradoras } from "@/components/EmpresasColaboradoras";
@@ -17,17 +18,54 @@ export default function HomePage() {
   const [stats, setStats] = React.useState<{ total: number; porEstado: any; porZona: any } | null>(null);
   const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
+  const [suggestions, setSuggestions] = React.useState<SerVivienteConEstado[]>([]);
+  const [showSuggestions, setShowSuggestions] = React.useState(false);
+  const searchBoxRef = React.useRef<HTMLFormElement>(null);
+
   React.useEffect(() => {
     getEstadisticas().then(setStats);
   }, [liveSnapshot]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Busqueda predictiva: a partir de 3 caracteres muestra un preview de
+  // resultados debajo del buscador, sin necesidad de enviar el formulario.
+  React.useEffect(() => {
+    const q = query.trim();
+    if (q.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      searchSeres({ query: q, page: 1, pageSize: 5 }).then(res => {
+        setSuggestions(res.items);
+        setShowSuggestions(true);
+      });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [query, liveSnapshot]);
+
+  React.useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const goToResults = () => {
+    setShowSuggestions(false);
     if (query.trim()) {
       setLocation(`/buscar?q=${encodeURIComponent(query.trim())}`);
     } else {
       setLocation('/buscar');
     }
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    goToResults();
   };
 
   return (
@@ -53,7 +91,7 @@ export default function HomePage() {
             Busca a tus seres queridos en zonas de emergencia.
           </p>
 
-          <form onSubmit={handleSearch} className="max-w-2xl mx-auto relative group">
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto relative group" ref={searchBoxRef}>
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400 group-focus-within:text-primary transition-colors" />
             </div>
@@ -61,15 +99,60 @@ export default function HomePage() {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Escape") setShowSuggestions(false); }}
               placeholder="Ingresa nombre, apellido o numero de cedula..."
               className="block w-full pl-12 pr-32 py-4 md:py-5 border-0 rounded-2xl text-gray-900 bg-white shadow-2xl focus:ring-4 focus:ring-primary/30 transition-all text-base md:text-lg"
               data-testid="input-search-hero"
+              autoComplete="off"
             />
             <div className="absolute inset-y-2 right-2">
               <Button type="submit" size="lg" className="h-full rounded-xl px-6 md:px-8 bg-primary hover:bg-primary/90 text-white shadow-md" data-testid="button-search-hero">
                 Buscar
               </Button>
             </div>
+
+            {showSuggestions && (
+              <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border overflow-hidden text-left z-20">
+                {suggestions.length > 0 ? (
+                  <>
+                    {suggestions.map((ser) => (
+                      <Link key={ser.id} href={`/ser/${ser.id}`}>
+                        <div
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                          onClick={() => setShowSuggestions(false)}
+                          data-testid={`suggestion-${ser.id}`}
+                        >
+                          <div className="w-10 h-10 rounded-full bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                            {ser.ultimoMovimiento.fotoUrl ? (
+                              <img src={ser.ultimoMovimiento.fotoUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <Isotype width={20} height={20} className="opacity-30" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-foreground truncate">
+                              {ser.tipo_ser === "PERSONA" ? `${ser.nombre} ${ser.apellido}` : ser.nombre}
+                            </div>
+                            <div className="text-xs text-muted-foreground truncate">{ser.ubicacionActual.nombre_lugar}</div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={goToResults}
+                      className="w-full px-4 py-3 text-sm font-semibold text-primary hover:bg-muted text-center"
+                    >
+                      Ver todos los resultados
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-4 py-6 text-sm text-muted-foreground text-center">
+                    Sin resultados para "{query.trim()}"
+                  </div>
+                )}
+              </div>
+            )}
           </form>
         </div>
       </div>

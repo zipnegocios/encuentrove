@@ -55,6 +55,31 @@ export default function BuscarPage() {
     getZonas().then(setZonasOptions);
   }, [liveSnapshot]);
 
+  // La URL cambio por fuera de este formulario (atras/adelante del navegador,
+  // link externo) — sincroniza los campos visibles para que no queden con
+  // texto/filtros desfasados respecto a lo que realmente se esta mostrando.
+  React.useEffect(() => { setQuery(queryUrl); }, [queryUrl]);
+  React.useEffect(() => { setTipo(tipoUrl); }, [tipoUrl]);
+  React.useEffect(() => { setEstado(estadoUrl); }, [estadoUrl]);
+  React.useEffect(() => { setZona(zonaUrl); }, [zonaUrl]);
+
+  // Busqueda predictiva: a partir de 3 caracteres (o al vaciar el campo)
+  // aplica el filtro de texto sin esperar a que se envie el formulario.
+  // Usa replace para no llenar el historial con una entrada por cada tecla.
+  React.useEffect(() => {
+    if (query === queryUrl) return;
+    if (query.length > 0 && query.length < 3) return;
+
+    const timer = setTimeout(() => {
+      const p = new URLSearchParams(searchString);
+      if (query.trim()) p.set("q", query.trim()); else p.delete("q");
+      p.set("page", "1");
+      setLocation(`/buscar?${p.toString()}`, { replace: true });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const runSearch = React.useCallback(() => {
     const params: SearchParams = {
       query: queryUrl,
@@ -100,6 +125,7 @@ export default function BuscarPage() {
     const p = new URLSearchParams(searchString);
     p.set("page", newPage.toString());
     setLocation(`/buscar?${p.toString()}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (

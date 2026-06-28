@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { Navbar } from "@/components/Navbar";
+import { ScrollRestoration } from "@/components/ScrollRestoration";
 import HomePage from "@/pages/HomePage";
 import BuscarPage from "@/pages/BuscarPage";
 import DetallePage from "@/pages/DetallePage";
@@ -33,6 +34,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <ScrollRestoration />
           <div className="flex flex-col min-h-screen">
             <Navbar />
             <div className="flex-1">
