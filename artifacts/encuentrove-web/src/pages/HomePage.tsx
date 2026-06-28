@@ -4,6 +4,7 @@ import { Search, MapPin, AlertCircle, HeartPulse, Home as HomeIcon } from "lucid
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getEstadisticas } from "@/api";
+import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { EmpresasColaboradoras } from "@/components/EmpresasColaboradoras";
@@ -14,10 +15,11 @@ export default function HomePage() {
   const [, setLocation] = useLocation();
   const [query, setQuery] = React.useState("");
   const [stats, setStats] = React.useState<{ total: number; porEstado: any; porZona: any } | null>(null);
+  const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
   React.useEffect(() => {
     getEstadisticas().then(setStats);
-  }, []);
+  }, [liveSnapshot]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

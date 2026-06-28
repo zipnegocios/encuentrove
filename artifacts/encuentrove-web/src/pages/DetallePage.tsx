@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useRoute, Link } from "wouter";
 import { getSerById } from "@/api";
+import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado, EstadoPersona, MovimientoConUbicacion } from "@/data/types";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MapPin, User, PawPrint, Calendar, AlertCircle, HeartPulse, ShieldCheck, Activity, ZoomIn, X } from "lucide-react";
@@ -125,7 +126,9 @@ export default function DetallePage() {
 
   const [ser, setSer] = React.useState<SerVivienteConEstado | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
+  // El id de la URL cambio — recarga mostrando el skeleton.
   React.useEffect(() => {
     if (id) {
       setLoading(true);
@@ -135,6 +138,13 @@ export default function DetallePage() {
       });
     }
   }, [id]);
+
+  // Llego un push del feed en vivo — refresca a esta misma persona en
+  // silencio (puede haber cambiado de estado mientras la pagina esta abierta).
+  React.useEffect(() => {
+    if (!id || !liveSnapshot) return;
+    getSerById(id).then(setSer);
+  }, [id, liveSnapshot]);
 
   // Combina con el OG dinamico que sirve el api-server a bots sociales
   // (ver artifacts/api-server/src/routes/og.ts) para que la pestana del

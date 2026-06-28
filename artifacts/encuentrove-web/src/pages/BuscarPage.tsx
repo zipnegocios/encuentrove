@@ -2,6 +2,7 @@ import * as React from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Search, Filter, Loader2, MapPin, User, PawPrint, Calendar } from "lucide-react";
 import { searchSeres, getZonas, SearchParams } from "@/api";
+import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado, TipoSer, EstadoPersona } from "@/data/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,12 +49,13 @@ export default function BuscarPage() {
   const [total, setTotal] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
 
-  React.useEffect(() => {
-    getZonas().then(setZonasOptions);
-  }, []);
+  const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
   React.useEffect(() => {
-    setLoading(true);
+    getZonas().then(setZonasOptions);
+  }, [liveSnapshot]);
+
+  const runSearch = React.useCallback(() => {
     const params: SearchParams = {
       query: queryUrl,
       tipo: tipoUrl === "ALL" ? undefined : (tipoUrl as TipoSer),
@@ -63,13 +65,24 @@ export default function BuscarPage() {
       pageSize: 12
     };
 
-    searchSeres(params).then(res => {
+    return searchSeres(params).then(res => {
       setResults(res.items);
       setTotal(res.total);
       setTotalPages(res.totalPages);
       setLoading(false);
     });
   }, [queryUrl, tipoUrl, estadoUrl, zonaUrl, pageUrl]);
+
+  // Filtros/pagina cambiaron — recarga mostrando el skeleton.
+  React.useEffect(() => {
+    setLoading(true);
+    runSearch();
+  }, [runSearch]);
+
+  // Llego un push del feed en vivo — refresca en silencio, sin parpadeo de loading.
+  React.useEffect(() => {
+    if (liveSnapshot) runSearch();
+  }, [liveSnapshot, runSearch]);
 
   const handleSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();

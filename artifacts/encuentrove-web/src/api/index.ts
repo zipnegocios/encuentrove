@@ -2,6 +2,8 @@
 // Uses Vite proxy (dev) / nginx proxy (Docker) so all requests are relative /api/v1/...
 // Override with VITE_API_BASE_URL for external absolute URLs (e.g. staging/prod).
 // Falls back to mock data when the API is unreachable.
+// The real feed itself is no longer fetched here — see src/lib/liveFeed.ts,
+// which receives it in real time over SSE and keeps a live snapshot in memory.
 
 import { seresVivientes, movimientos, getUbicacionForMovimiento, ubicaciones as mockUbicaciones } from '../data/mockData';
 import {
@@ -11,190 +13,11 @@ import {
   Ubicacion,
   EstadoPersona,
   TipoSer,
-  RangoEdad,
-  Sexo,
 } from '../data/types';
+import { apiBase, S3_BASE_URL, API_BASE_URL } from '../lib/env';
+import { getLiveSnapshot } from '../lib/liveFeed';
 
-// ─── Runtime env ──────────────────────────────────────────────────────────────
-// Reads window.__ENV__ (injected by nginx at container start) then import.meta.env.
-function getEnv(key: string): string {
-  if (typeof window !== 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const v = ((window as any).__ENV__ as Record<string, string> | undefined)?.[key];
-    if (v) return v;
-  }
-  return (import.meta.env as Record<string, string>)[key] ?? '';
-}
-
-export const S3_BASE_URL = (): string => getEnv('VITE_S3_BASE_URL');
-export const API_BASE_URL = (): string => getEnv('VITE_API_BASE_URL');
-
-// Returns the base prefix for API calls:
-// - If VITE_API_BASE_URL is set → use it as-is (e.g. for an external backend).
-// - Otherwise use '' (empty) so paths like '/api/v1/...' are relative,
-//   handled by the Vite proxy in dev and nginx proxy_pass in Docker.
-function apiBase(): string {
-  return API_BASE_URL().replace(/\/$/, '');
-}
-
-// ─── Real API types ────────────────────────────────────────────────────────────
-
-interface ApiUsuario {
-  id?: string;
-  nombreCompleto?: string;
-  nombre?: string;
-  apellido?: string;
-  telefono?: string;
-}
-
-interface ApiFeedItem {
-  idMovimiento: number;
-  tipoSer: string;
-  nombre: string;
-  apellido?: string;
-  cedula?: string;
-  rangoEdad?: string;
-  sexo?: string;
-  urlFoto?: string;
-  estadoActual: string;
-  condicionMedica?: string;
-  conFamiliar: boolean;
-  nombreLugar: string;
-  fechaRegistro: string;
-  usuarioHito?: ApiUsuario;
-  usuarioCreador?: ApiUsuario;
-}
-
-interface ApiFeedResponse {
-  success: boolean;
-  data: ApiFeedItem[];
-}
-
-// ─── Mapping helpers ───────────────────────────────────────────────────────────
-
-function buildFotoUrl(urlFoto: string | undefined | null): string | null {
-  if (!urlFoto) return null;
-  if (urlFoto.startsWith('http')) return urlFoto; // already full S3 URL
-  const s3 = S3_BASE_URL();
-  if (s3) return `${s3.replace(/\/$/, '')}/${urlFoto}`;
-  return null;
-}
-
-function mapSexo(raw: string | undefined | null): Sexo | null {
-  if (!raw) return null;
-  const u = raw.toUpperCase();
-  if (u === 'MASCULINO') return 'Masculino';
-  if (u === 'FEMENINO') return 'Femenino';
-  return 'Desconocido';
-}
-
-function mapRangoEdad(raw: string | undefined | null): RangoEdad {
-  if (!raw) return 'ADULTO';
-  const n = raw.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const map: Record<string, RangoEdad> = {
-    NINO: 'NINO', ADOLESCENTE: 'ADOLESCENTE', ADULTO: 'ADULTO', ANCIANO: 'ANCIANO',
-  };
-  return map[n] ?? 'ADULTO';
-}
-
-function contactoLabel(u: ApiUsuario | undefined): string {
-  if (!u) return '';
-  const nombre = u.nombreCompleto ?? `${u.nombre ?? ''} ${u.apellido ?? ''}`.trim();
-  return [nombre, u.telefono].filter(Boolean).join(' — ');
-}
-
-function mapFeedItem(item: ApiFeedItem): SerVivienteConEstado {
-  // Use cedula as the routing ID for personas; composite for animals without cedula.
-  const id = item.cedula
-    ? item.cedula.replace(/\s+/g, '-')
-    : `${item.tipoSer}-${item.nombre ?? 'SIN_NOMBRE'}-${item.idMovimiento}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-
-  const ubicacion: Ubicacion = {
-    id: item.idMovimiento,
-    nombre_lugar: item.nombreLugar,
-    geolocalizacion_red: null,
-    zona: item.nombreLugar,
-  };
-
-  const mov: MovimientoConUbicacion = {
-    id: item.idMovimiento,
-    id_ser_viviente: id,
-    id_ubicacion: item.idMovimiento,
-    id_persona_dueno_telefono: contactoLabel(item.usuarioHito),
-    estado_persona: item.estadoActual as EstadoPersona,
-    condicion_medica: item.condicionMedica || null,
-    con_familiar: item.conFamiliar,
-    url_foto: item.urlFoto || null,
-    fecha_registro: item.fechaRegistro,
-    id_trx: `TRX-${item.idMovimiento}`,
-    ubicacion,
-    fotoUrl: buildFotoUrl(item.urlFoto),
-  };
-
-  return {
-    id,
-    tipo_ser: item.tipoSer as TipoSer,
-    nombre: item.nombre ?? null,
-    apellido: item.apellido ?? null,
-    cedula: item.cedula ?? null,
-    sexo: mapSexo(item.sexo),
-    rango_edad: mapRangoEdad(item.rangoEdad),
-    raza: null,
-    color: null,
-    estadoActual: item.estadoActual as EstadoPersona,
-    ubicacionActual: ubicacion,
-    ultimoMovimiento: mov,
-    movimientos: [mov],
-  };
-}
-
-// ─── Feed fetcher (real API) ───────────────────────────────────────────────────
-
-let feedCache: SerVivienteConEstado[] | null = null;
-let feedCacheAt = 0;
-const CACHE_TTL = 60_000;
-
-async function fetchFeed(): Promise<SerVivienteConEstado[]> {
-  const now = Date.now();
-  if (feedCache && now - feedCacheAt < CACHE_TTL) return feedCache;
-
-  const base = apiBase();
-
-  // Fetch PERSONA and ANIMAL separately (all-types feed has a backend bug with upper(bytea)).
-  // fetchTipo throws on HTTP errors so the caller can detect API unreachability.
-  async function fetchTipo(tipo: string): Promise<ApiFeedItem[]> {
-    const res = await fetch(`${base}/api/v1/seres-vivientes/feed?tipoSer=${tipo}&page=0&size=500`);
-    if (!res.ok) throw new Error(`Feed ${tipo}: HTTP ${res.status}`);
-    const data: ApiFeedResponse = await res.json();
-    return data.data ?? [];
-  }
-
-  // Use allSettled so ANIMAL failure doesn't lose PERSONA data.
-  // But if PERSONA (primary) fails, consider the API unreachable → throw → mock fallback.
-  const [personaResult, animalResult] = await Promise.allSettled([
-    fetchTipo('PERSONA'),
-    fetchTipo('ANIMAL'),
-  ]);
-
-  if (personaResult.status === 'rejected') throw personaResult.reason;
-
-  const all = [
-    ...personaResult.value,
-    ...(animalResult.status === 'fulfilled' ? animalResult.value : []),
-  ]
-    .sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime());
-
-  // Deduplicate: one card per ser_viviente — keep the latest movement snapshot.
-  const seen = new Map<string, ApiFeedItem>();
-  for (const item of all) {
-    const key = item.cedula || `${item.tipoSer}::${item.nombre}::${item.apellido ?? ''}`;
-    if (!seen.has(key)) seen.set(key, item);
-  }
-
-  feedCache = Array.from(seen.values()).map(mapFeedItem);
-  feedCacheAt = now;
-  return feedCache;
-}
+export { S3_BASE_URL, API_BASE_URL };
 
 // ─── Mock data fallback ────────────────────────────────────────────────────────
 
@@ -221,18 +44,13 @@ const seresConEstadoMock: SerVivienteConEstado[] = (() => {
   }).filter((s): s is SerVivienteConEstado => s !== null);
 })();
 
-// ─── Selector: real API vs mock ────────────────────────────────────────────────
+// ─── Selector: live feed vs mock ───────────────────────────────────────────────
 
 async function getAll(): Promise<SerVivienteConEstado[]> {
-  // Use real API whenever a proxy or absolute URL is available.
-  // In dev with Vite proxy, apiBase() returns '' and '/api/...' calls are proxied.
-  // In production, VITE_API_BASE_URL should be set to the backend URL.
-  try {
-    return await fetchFeed();
-  } catch {
-    // API unreachable — fall back to mock data silently.
-    return seresConEstadoMock;
-  }
+  // The live feed (src/lib/liveFeed.ts) is always connecting/connected in the
+  // background. While no real snapshot has arrived yet (first load, or the
+  // backend has never been reachable), fall back to mock data silently.
+  return getLiveSnapshot() ?? seresConEstadoMock;
 }
 
 // ─── Public API (stable signatures — do NOT change for Phase 3+) ─────────────
@@ -304,8 +122,8 @@ export async function getMovimientos(id_ser_viviente: string): Promise<Movimient
 
 export async function getZonas(): Promise<string[]> {
   const all = await getAll();
-  // If we got real API data use location names; otherwise use the mock zonas.
-  if (feedCache) return Array.from(new Set(all.map(s => s.ubicacionActual.nombre_lugar)));
+  // If we got real (live) data use location names; otherwise use the mock zonas.
+  if (getLiveSnapshot()) return Array.from(new Set(all.map(s => s.ubicacionActual.nombre_lugar)));
   return Array.from(new Set(mockUbicaciones.map(u => u.zona)));
 }
 
