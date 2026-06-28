@@ -5,7 +5,9 @@
 
 FROM node:20-alpine AS builder
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Pinned to pnpm 10.x: pnpm@latest (11.x) requires Node >=22.13 (uses the
+# node:sqlite built-in, absent on Node 20) and breaks this build.
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json tsconfig.json ./
 COPY lib/ ./lib/
