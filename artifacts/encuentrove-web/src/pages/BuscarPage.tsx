@@ -57,7 +57,6 @@ function FilterSelects({ tipo, setTipo, estado, setEstado, zona, setZona, zonasO
           <SelectValue placeholder="Tipo" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="ALL">Todos</SelectItem>
           <SelectItem value="PERSONA">Personas</SelectItem>
           <SelectItem value="ANIMAL">Animales</SelectItem>
         </SelectContent>
@@ -96,7 +95,11 @@ export default function BuscarPage() {
   const searchParams = new URLSearchParams(searchString);
   
   const queryUrl = searchParams.get("q") ?? "";
-  const tipoUrl = searchParams.get("tipo") ?? "ALL";
+  // "PERSONA" es el default — el listado de mascotas/animales solo aparece
+  // si se filtra explicitamente por "ANIMAL". "ALL" se coerciona a "PERSONA"
+  // por compatibilidad con links viejos que aun usen ese valor.
+  const rawTipoUrl = searchParams.get("tipo") ?? "PERSONA";
+  const tipoUrl = rawTipoUrl === "ALL" ? "PERSONA" : rawTipoUrl;
   const estadoUrl = searchParams.get("estado") ?? "ALL";
   const zonaUrl = searchParams.get("zona") ?? "ALL";
   const pageUrl = parseInt(searchParams.get("page") || "1", 10);
@@ -113,7 +116,7 @@ export default function BuscarPage() {
   const [totalPages, setTotalPages] = React.useState(1);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
-  const hasActiveFilters = tipoUrl !== "ALL" || estadoUrl !== "ALL" || zonaUrl !== "ALL";
+  const hasActiveFilters = tipoUrl !== "PERSONA" || estadoUrl !== "ALL" || zonaUrl !== "ALL";
 
   const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
@@ -149,7 +152,7 @@ export default function BuscarPage() {
   const runSearch = React.useCallback(() => {
     const params: SearchParams = {
       query: queryUrl,
-      tipo: tipoUrl === "ALL" ? undefined : (tipoUrl as TipoSer),
+      tipo: tipoUrl as TipoSer,
       estado: estadoUrl === "ALL" ? undefined : (estadoUrl as EstadoPersona),
       zona: zonaUrl === "ALL" ? undefined : zonaUrl,
       page: pageUrl,
@@ -179,7 +182,7 @@ export default function BuscarPage() {
     if (e) e.preventDefault();
     const p = new URLSearchParams();
     if (query.trim()) p.set("q", query.trim());
-    if (tipo !== "ALL") p.set("tipo", tipo);
+    if (tipo !== "PERSONA") p.set("tipo", tipo);
     if (estado !== "ALL") p.set("estado", estado);
     if (zona !== "ALL") p.set("zona", zona);
     p.set("page", "1");
@@ -270,7 +273,7 @@ export default function BuscarPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  setQuery(""); setTipo("ALL"); setEstado("ALL"); setZona("ALL");
+                  setQuery(""); setTipo("PERSONA"); setEstado("ALL"); setZona("ALL");
                   setLocation("/buscar");
                   setFiltersOpen(false);
                 }}
@@ -315,7 +318,7 @@ export default function BuscarPage() {
               Intenta buscar con otros terminos o ajusta los filtros. Recuerda que la base de datos se actualiza constantemente.
             </p>
             <Button variant="outline" className="mt-6 rounded-full" onClick={() => {
-              setQuery(""); setTipo("ALL"); setEstado("ALL"); setZona("ALL");
+              setQuery(""); setTipo("PERSONA"); setEstado("ALL"); setZona("ALL");
               setLocation('/buscar');
             }}>
               Limpiar filtros

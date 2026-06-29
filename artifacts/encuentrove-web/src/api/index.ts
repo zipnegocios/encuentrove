@@ -102,7 +102,9 @@ export async function searchSeres(params: SearchParams): Promise<SearchResult> {
       return false;
     });
   }
-  if (params.tipo) filtered = filtered.filter(s => s.tipo_ser === params.tipo);
+  // Por defecto el listado es solo de personas — los animales/mascotas solo
+  // aparecen si se filtra explicitamente por tipo=ANIMAL.
+  filtered = filtered.filter(s => s.tipo_ser === (params.tipo ?? 'PERSONA'));
   if (params.estado) filtered = filtered.filter(s => s.estadoActual === params.estado);
   if (params.zona) {
     filtered = filtered.filter(s =>

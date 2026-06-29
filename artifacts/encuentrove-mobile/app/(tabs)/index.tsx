@@ -26,8 +26,9 @@ import { invalidateFeedCache } from "@/lib/api";
 
 const SEARCH_PLACEHOLDER = "Busca por nombre, apellido o cédula...";
 
-const TIPOS: { label: string; value: TipoSer | "" }[] = [
-  { label: "Todos", value: "" },
+// Sin opcion "Todos" — el listado por defecto es solo de personas; las
+// mascotas/animales solo aparecen si se elige "Animales" explicitamente.
+const TIPOS: { label: string; value: TipoSer }[] = [
   { label: "Personas", value: "PERSONA" },
   { label: "Animales", value: "ANIMAL" },
 ];
@@ -48,12 +49,12 @@ export default function BuscarScreen() {
   const isWeb = Platform.OS === "web";
 
   const [query, setQuery] = useState("");
-  const [tipo, setTipo] = useState<TipoSer | "">("");
+  const [tipo, setTipo] = useState<TipoSer>("PERSONA");
   const [estado, setEstado] = useState<EstadoPersona | "">("");
   const [refreshing, setRefreshing] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [inputWidth, setInputWidth] = useState(0);
-  const hasActiveFilters = tipo !== "" || estado !== "";
+  const hasActiveFilters = tipo !== "PERSONA" || estado !== "";
 
   const { data: items = [], isLoading, isError, refetch: refetchItems } = useFilteredSeres({ query, tipo, estado });
   const { data: stats } = useEstadisticas();
@@ -131,7 +132,7 @@ export default function BuscarScreen() {
           {isLoading ? "Cargando..." : `${items.length} resultado${items.length !== 1 ? "s" : ""}`}
         </Text>
         {hasActiveFilters && (
-          <Pressable onPress={() => { setTipo(""); setEstado(""); }} hitSlop={6}>
+          <Pressable onPress={() => { setTipo("PERSONA"); setEstado(""); }} hitSlop={6}>
             <Text style={[styles.clearText, { color: colors.primary }]}>Limpiar filtros</Text>
           </Pressable>
         )}
@@ -203,7 +204,7 @@ export default function BuscarScreen() {
         <View style={styles.chipWrap}>
           {TIPOS.map((t) => (
             <Pressable
-              key={t.value || "all-tipo"}
+              key={t.value}
               onPress={() => setTipo(t.value)}
               style={[
                 styles.chip,
