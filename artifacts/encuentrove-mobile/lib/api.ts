@@ -37,6 +37,8 @@ interface ApiFeedItem {
   conFamiliar: boolean;
   nombreLugar: string;
   fechaRegistro: string;
+  raza?: string;
+  color?: string;
   usuarioHito?: ApiUsuario;
   usuarioCreador?: ApiUsuario;
 }
@@ -104,8 +106,8 @@ function mapFeedItem(item: ApiFeedItem): SerVivienteConEstado {
     cedula: item.cedula ?? null,
     sexo: mapSexo(item.sexo),
     rango_edad: mapRangoEdad(item.rangoEdad),
-    raza: null,
-    color: null,
+    raza: item.raza ?? null,
+    color: item.color ?? null,
     estadoActual: item.estadoActual as EstadoPersona,
     ubicacionActual: ubicacion,
     ultimoMovimiento: mov,
