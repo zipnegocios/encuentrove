@@ -32,6 +32,31 @@ const STATUS_COLORS: Record<EstadoPersona, string> = {
   NECESITA_ASISTENCIA_MEDICA: "hsl(var(--status-medica))"
 };
 
+// Layout de la grilla de resultados: el usuario elige densidad por separado
+// para mobile (1/2 columnas) y desktop (4/6/8 columnas) — ver toolbar arriba
+// de la grilla. Mapeado a clases literales (no interpoladas) para que el
+// scanner JIT de Tailwind las detecte en build.
+type MobileCols = 1 | 2;
+type DesktopCols = 4 | 6 | 8;
+
+const MOBILE_GRID_CLASS: Record<MobileCols, string> = {
+  1: "grid-cols-1",
+  2: "grid-cols-2",
+};
+const DESKTOP_GRID_CLASS: Record<DesktopCols, string> = {
+  4: "md:grid-cols-4",
+  6: "md:grid-cols-6",
+  8: "md:grid-cols-8",
+};
+const DESKTOP_GAP_CLASS: Record<DesktopCols, string> = {
+  4: "gap-6",
+  6: "gap-4",
+  8: "gap-3",
+};
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50] as const;
+const DEFAULT_PAGE_SIZE = 10;
+
 interface FilterSelectsProps {
   tipo: string;
   setTipo: (v: string) => void;
@@ -103,18 +128,21 @@ export default function BuscarPage() {
   const estadoUrl = searchParams.get("estado") ?? "ALL";
   const zonaUrl = searchParams.get("zona") ?? "ALL";
   const pageUrl = parseInt(searchParams.get("page") || "1", 10);
+  const pageSizeUrl = parseInt(searchParams.get("pageSize") || String(DEFAULT_PAGE_SIZE), 10);
 
   const [query, setQuery] = React.useState(queryUrl);
   const [tipo, setTipo] = React.useState<string>(tipoUrl);
   const [estado, setEstado] = React.useState<string>(estadoUrl);
   const [zona, setZona] = React.useState<string>(zonaUrl);
-  
+
   const [zonasOptions, setZonasOptions] = React.useState<string[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [results, setResults] = React.useState<SerVivienteConEstado[]>([]);
   const [total, setTotal] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [mobileCols, setMobileCols] = React.useState<MobileCols>(2);
+  const [desktopCols, setDesktopCols] = React.useState<DesktopCols>(4);
 
   const hasActiveFilters = tipoUrl !== "PERSONA" || estadoUrl !== "ALL" || zonaUrl !== "ALL";
 
@@ -156,7 +184,7 @@ export default function BuscarPage() {
       estado: estadoUrl === "ALL" ? undefined : (estadoUrl as EstadoPersona),
       zona: zonaUrl === "ALL" ? undefined : zonaUrl,
       page: pageUrl,
-      pageSize: 12
+      pageSize: pageSizeUrl
     };
 
     return searchSeres(params).then(res => {
@@ -165,7 +193,7 @@ export default function BuscarPage() {
       setTotalPages(res.totalPages);
       setLoading(false);
     });
-  }, [queryUrl, tipoUrl, estadoUrl, zonaUrl, pageUrl]);
+  }, [queryUrl, tipoUrl, estadoUrl, zonaUrl, pageUrl, pageSizeUrl]);
 
   // Filtros/pagina cambiaron — recarga mostrando el skeleton.
   React.useEffect(() => {
@@ -185,6 +213,7 @@ export default function BuscarPage() {
     if (tipo !== "PERSONA") p.set("tipo", tipo);
     if (estado !== "ALL") p.set("estado", estado);
     if (zona !== "ALL") p.set("zona", zona);
+    if (pageSizeUrl !== DEFAULT_PAGE_SIZE) p.set("pageSize", String(pageSizeUrl));
     p.set("page", "1");
     setLocation(`/buscar?${p.toString()}`);
   };
@@ -197,8 +226,15 @@ export default function BuscarPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const handlePageSizeChange = (value: string) => {
+    const p = new URLSearchParams(searchString);
+    if (value === String(DEFAULT_PAGE_SIZE)) p.delete("pageSize"); else p.set("pageSize", value);
+    p.set("page", "1");
+    setLocation(`/buscar?${p.toString()}`);
+  };
+
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background pt-20">
+    <div className="flex flex-col bg-background pt-20">
       {/* Search Header */}
       <div className="bg-white border-b sticky top-[68px] z-40 shadow-sm pb-4">
         <div className="container mx-auto px-4 md:px-6 pt-6">
@@ -296,8 +332,8 @@ export default function BuscarPage() {
       {/* Results */}
       <main className="flex-1 container mx-auto px-4 md:px-6 py-8">
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {Array.from({ length: 8 }).map((_, i) => (
+          <div className={`grid ${MOBILE_GRID_CLASS[mobileCols]} ${DESKTOP_GRID_CLASS[desktopCols]} ${DESKTOP_GAP_CLASS[desktopCols]}`}>
+            {Array.from({ length: Math.min(pageSizeUrl, 12) }).map((_, i) => (
               <Card key={i} className="overflow-hidden border-none shadow-md rounded-2xl flex flex-col h-[320px]">
                 <Skeleton className="h-48 w-full rounded-none" />
                 <div className="p-4 space-y-3">
@@ -326,11 +362,59 @@ export default function BuscarPage() {
           </div>
         ) : (
           <>
-            <div className="mb-6 flex justify-between items-center text-sm text-muted-foreground font-medium">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground font-medium">
               <span>Mostrando {results.length} de {total} registros</span>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground/80 hidden sm:inline">Por página</span>
+                  <Select value={String(pageSizeUrl)} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="h-8 w-[72px] rounded-lg text-sm" data-testid="select-page-size">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/30 p-1 md:hidden">
+                  {([1, 2] as const).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setMobileCols(n)}
+                      data-testid={`button-cols-mobile-${n}`}
+                      className={`w-7 h-6 rounded-md text-xs font-bold transition-colors ${
+                        mobileCols === n ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="hidden md:inline-flex items-center gap-1 rounded-lg border border-border/60 bg-muted/30 p-1">
+                  {([4, 6, 8] as const).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setDesktopCols(n)}
+                      data-testid={`button-cols-desktop-${n}`}
+                      className={`w-7 h-6 rounded-md text-xs font-bold transition-colors ${
+                        desktopCols === n ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className={`grid ${MOBILE_GRID_CLASS[mobileCols]} ${DESKTOP_GRID_CLASS[desktopCols]} ${DESKTOP_GAP_CLASS[desktopCols]}`}>
               {results.map((ser) => (
                 <Link key={ser.id} href={buildSerPath(ser)}>
                   <div className="group cursor-pointer h-full">

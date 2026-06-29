@@ -25,50 +25,34 @@ export function Footer() {
 
   return (
     <footer className="relative mt-auto bg-white">
-      <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
+      <div className="h-[3px] w-full bg-gradient-to-r from-primary via-accent to-primary" />
 
-      <div className="container mx-auto px-4 md:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
-          <div className="flex flex-col items-center md:items-start text-center md:text-left gap-3">
-            <Logo height={24} />
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Plataforma pública de búsqueda en zonas de emergencia. Conectamos personas, animales y familias que se buscan.
-            </p>
+      <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2.5">
+            <Logo height={16} className="shrink-0 opacity-90" />
+            <span className="hidden lg:inline text-[11px] text-muted-foreground border-l border-border/60 pl-2.5 leading-none">
+              Datos referenciales, sujetos a confirmación en campo.
+            </span>
           </div>
 
-          <div className="flex flex-col items-center md:items-start gap-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70">Navegación</h4>
-            <Link href="/" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-muted-foreground">
+            <Link href="/" className="hover:text-primary transition-colors">
               Inicio
             </Link>
-            <Link href="/buscar" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            <Link href="/buscar" className="hover:text-primary transition-colors">
               Buscar
             </Link>
-          </div>
-
-          <div className="flex flex-col items-center md:items-start gap-3 text-center md:text-left">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/70">Aviso</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Todos los datos mostrados son referenciales y están sujetos a confirmación en campo.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-10 pt-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground text-center sm:text-left">
-            © {year} EncuentroVE — Aplicación sin fines de lucro.
-          </p>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="text-border hidden sm:inline">|</span>
             <span>
-              Desarrollado por{" "}
+              © {year} ·{" "}
               <a
                 href="https://ss2526.tech/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium text-foreground hover:text-primary underline"
               >
-                Solutions Systems 2526 C.A.
+                SS2526 C.A.
               </a>
             </span>
 
@@ -80,9 +64,9 @@ export function Footer() {
                       type="button"
                       aria-label="Equipo de desarrollo"
                       data-testid="button-dev-team"
-                      className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-colors shrink-0"
+                      className="inline-flex items-center justify-center w-5 h-5 rounded-full border border-border/60 text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-colors shrink-0"
                     >
-                      <Code2 className="w-3.5 h-3.5" />
+                      <Code2 className="w-3 h-3" />
                     </button>
                   </DialogTrigger>
                 </TooltipTrigger>
