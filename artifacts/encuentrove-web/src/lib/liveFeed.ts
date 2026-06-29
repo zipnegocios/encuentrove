@@ -67,10 +67,20 @@ function mapRangoEdad(raw: string | undefined | null): RangoEdad {
   return map[n] ?? "ADULTO";
 }
 
+// Privacidad: el publico solo debe ver los ultimos 4 digitos del telefono
+// de quien reporta. Mascara de longitud fija (no variable) para no filtrar
+// tampoco la cantidad real de digitos del numero original.
+function maskPhone(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length <= 4) return raw;
+  return `••• ••• ${digits.slice(-4)}`;
+}
+
 function contactoLabel(u: ApiUsuario | undefined): string {
   if (!u) return "";
   const nombre = u.nombreCompleto ?? `${u.nombre ?? ""} ${u.apellido ?? ""}`.trim();
-  return [nombre, u.telefono].filter(Boolean).join(" — ");
+  return [nombre, maskPhone(u.telefono)].filter(Boolean).join(" — ");
 }
 
 function deriveId(item: ApiFeedItem): string {

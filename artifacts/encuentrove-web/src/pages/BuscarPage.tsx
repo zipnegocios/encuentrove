@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { Search, Filter, Loader2, MapPin, User, PawPrint, Calendar } from "lucide-react";
+import { Search, Filter, Loader2, MapPin, User, PawPrint, Calendar, ArrowRight } from "lucide-react";
 import { searchSeres, getZonas, SearchParams, meetsPredictiveThreshold } from "@/api";
 import { subscribeLiveFeed, getLiveSnapshot } from "@/lib/liveFeed";
 import { SerVivienteConEstado, TipoSer, EstadoPersona } from "@/data/types";
@@ -373,11 +373,18 @@ export default function BuscarPage() {
                             <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-primary/70" />
                             <span className="line-clamp-2 leading-snug">{ser.ubicacionActual.nombre_lugar}</span>
                           </div>
-                          
+
                           <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
                             <Calendar className="w-4 h-4 shrink-0 text-primary/70" />
                             <span>
                               {new Intl.DateTimeFormat('es-VE', { dateStyle:'medium' }).format(new Date(ser.ultimoMovimiento.fecha_registro))}
+                            </span>
+                          </div>
+
+                          <div className="pt-3 mt-1 border-t border-border/60">
+                            <span className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wide text-primary-foreground bg-primary px-3.5 py-2.5 rounded-xl shadow-sm group-hover:bg-accent transition-colors duration-300">
+                              Ver detalles
+                              <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
                             </span>
                           </div>
                         </div>
