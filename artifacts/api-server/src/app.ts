@@ -2,6 +2,8 @@ import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import feedV1Router from "./routes/feedV1";
+import cedulaV1Router from "./routes/cedulaV1";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -37,6 +39,14 @@ app.use(express.urlencoded({ extended: true }));
 // Forwards /api/v1/* requests to the Java Spring backend.
 // This lets the browser call /api/v1/... as same-origin instead of cross-origin.
 const JAVA_BACKEND = (process.env.JAVA_BACKEND_URL ?? "https://heart.encuentrove.online").replace(/\/$/, "");
+
+// Servido desde el snapshot en memoria del poller en vez de reenviarse al
+// backend Java — ver routes/feedV1.ts. Tiene que registrarse antes del
+// passthrough generico de abajo para interceptar esta ruta especifica.
+app.use("/api/v1", feedV1Router);
+
+// Enmascara telefonoRef/usuario.telefono antes de relayar — ver routes/cedulaV1.ts.
+app.use("/api/v1", cedulaV1Router);
 
 app.use("/api/v1", async (req: Request, res: Response) => {
   const qs = req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";

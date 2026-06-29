@@ -62,7 +62,7 @@ export function buildFotoUrl(urlFoto: string | undefined): string | null {
 // Privacidad: el publico solo debe ver los ultimos 4 digitos del telefono
 // de quien reporta. Mascara de longitud fija (no variable) para no filtrar
 // tampoco la cantidad real de digitos del numero original.
-function maskPhone(raw: string | undefined): string | undefined {
+export function maskPhone(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   const digits = raw.replace(/\D/g, "");
   if (digits.length <= 4) return raw;
@@ -170,12 +170,41 @@ export async function fetchHistorialReal(cedula: string | undefined): Promise<No
   }
 }
 
-async function fetchFeedItems(tipo: "PERSONA" | "ANIMAL"): Promise<ApiFeedItem[]> {
-  const url = `${JAVA_BACKEND}/api/v1/seres-vivientes/feed?tipoSer=${tipo}&page=0&size=500`;
+interface ApiFeedPageResponse {
+  success: boolean;
+  data: ApiFeedItem[];
+  totalPages?: number;
+}
+
+const FEED_PAGE_SIZE = 500;
+// Salvaguarda contra un totalPages absurdo/malicioso del backend — 50
+// paginas de 500 son 25,000 registros por tipo, mas que suficiente.
+const MAX_FEED_PAGES = 50;
+
+async function fetchFeedPage(tipo: "PERSONA" | "ANIMAL", page: number): Promise<ApiFeedPageResponse> {
+  const url = `${JAVA_BACKEND}/api/v1/seres-vivientes/feed?tipoSer=${tipo}&page=${page}&size=${FEED_PAGE_SIZE}`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) throw new Error(`Feed ${tipo}: HTTP ${res.status}`);
-  const data = await res.json() as { success: boolean; data: ApiFeedItem[] };
-  return data.data ?? [];
+  if (!res.ok) throw new Error(`Feed ${tipo} page ${page}: HTTP ${res.status}`);
+  return res.json() as Promise<ApiFeedPageResponse>;
+}
+
+// El backend pagina de a FEED_PAGE_SIZE — si hay mas registros de un tipo
+// que eso, hay que seguir pidiendo paginas o se pierden en silencio mas alla
+// de la primera. Pide la pagina 0 para saber cuantas faltan (totalPages) y
+// el resto en paralelo.
+async function fetchFeedItems(tipo: "PERSONA" | "ANIMAL"): Promise<ApiFeedItem[]> {
+  const first = await fetchFeedPage(tipo, 0);
+  const items = [...(first.data ?? [])];
+  const totalPages = Math.min(first.totalPages ?? 1, MAX_FEED_PAGES);
+
+  if (totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) => fetchFeedPage(tipo, i + 1)),
+    );
+    for (const page of rest) items.push(...(page.data ?? []));
+  }
+
+  return items;
 }
 
 // The Java backend returns one row per movimiento (event), not one per
