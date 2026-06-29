@@ -18,10 +18,13 @@ import { useFilteredSeres, useEstadisticas, useAllSeres } from "@/hooks/useSeres
 import { PersonCard } from "@/components/PersonCard";
 import { SkeletonCard } from "@/components/SkeletonCard";
 import { StatsBar } from "@/components/StatsBar";
-import { StatusBadge } from "@/components/StatusBadge";
+import { FilterSheet } from "@/components/FilterSheet";
+import { MarqueeText } from "@/components/MarqueeText";
 import { SerVivienteConEstado, TipoSer, EstadoPersona } from "@/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateFeedCache } from "@/lib/api";
+
+const SEARCH_PLACEHOLDER = "Busca por nombre, apellido o cédula...";
 
 const TIPOS: { label: string; value: TipoSer | "" }[] = [
   { label: "Todos", value: "" },
@@ -48,6 +51,9 @@ export default function BuscarScreen() {
   const [tipo, setTipo] = useState<TipoSer | "">("");
   const [estado, setEstado] = useState<EstadoPersona | "">("");
   const [refreshing, setRefreshing] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [inputWidth, setInputWidth] = useState(0);
+  const hasActiveFilters = tipo !== "" || estado !== "";
 
   const { data: items = [], isLoading, isError, refetch: refetchItems } = useFilteredSeres({ query, tipo, estado });
   const { data: stats } = useEstadisticas();
@@ -70,81 +76,50 @@ export default function BuscarScreen() {
 
   const renderHeader = () => (
     <View>
-      <View style={[styles.header, { paddingTop: topPadding + 12, backgroundColor: colors.primary }]}>
-        <View style={styles.heroRow}>
-          <View>
-            <Text style={styles.heroTitle}>EncuentroVE</Text>
-            <Text style={styles.heroSub}>Búsqueda de personas y animales</Text>
+      <View style={[styles.header, { paddingTop: topPadding + 10, backgroundColor: colors.primary }]}>
+        <Text style={styles.heroTitle}>EncuentroVE</Text>
+
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBox, { backgroundColor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.2)" }]}>
+            <Ionicons name="search" size={17} color="rgba(255,255,255,0.7)" />
+            <View
+              style={styles.inputWrap}
+              onLayout={(e) => setInputWidth(e.nativeEvent.layout.width)}
+            >
+              <TextInput
+                testID="search-input"
+                style={[styles.searchInput, { color: "#ffffff" }]}
+                value={query}
+                onChangeText={setQuery}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+              {query.length === 0 && (
+                <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                  <MarqueeText
+                    text={SEARCH_PLACEHOLDER}
+                    containerWidth={inputWidth}
+                    style={[styles.searchInput, styles.marqueeText]}
+                  />
+                </View>
+              )}
+            </View>
+            {query.length > 0 && Platform.OS !== "ios" && (
+              <Pressable onPress={() => setQuery("")}>
+                <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.6)" />
+              </Pressable>
+            )}
           </View>
-        </View>
 
-        <View style={[styles.searchBox, { backgroundColor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.2)" }]}>
-          <Ionicons name="search" size={18} color="rgba(255,255,255,0.7)" />
-          <TextInput
-            testID="search-input"
-            style={[styles.searchInput, { color: "#ffffff" }]}
-            placeholder="Nombre, apellido o cédula..."
-            placeholderTextColor="rgba(255,255,255,0.5)"
-            value={query}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            clearButtonMode="while-editing"
-          />
-          {query.length > 0 && Platform.OS !== "ios" && (
-            <Pressable onPress={() => setQuery("")}>
-              <Ionicons name="close-circle" size={18} color="rgba(255,255,255,0.6)" />
-            </Pressable>
-          )}
+          <Pressable
+            testID="filter-button"
+            onPress={() => setFiltersOpen(true)}
+            style={[styles.filterBtn, { backgroundColor: "rgba(255,255,255,0.12)", borderColor: "rgba(255,255,255,0.2)" }]}
+          >
+            <Ionicons name="filter-outline" size={19} color="#ffffff" />
+            {hasActiveFilters && <View style={[styles.filterDot, { backgroundColor: colors.accent }]} />}
+          </Pressable>
         </View>
-      </View>
-
-      <View style={styles.filterSection}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={TIPOS}
-          keyExtractor={(t) => t.value || "all-tipo"}
-          contentContainerStyle={styles.filterRow}
-          renderItem={({ item: t }) => (
-            <Pressable
-              onPress={() => setTipo(t.value)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: tipo === t.value ? colors.primary : colors.card,
-                  borderColor: tipo === t.value ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.chipText, { color: tipo === t.value ? "#fff" : colors.foreground }]}>
-                {t.label}
-              </Text>
-            </Pressable>
-          )}
-        />
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={ESTADOS}
-          keyExtractor={(e) => e.value || "all-estado"}
-          contentContainerStyle={styles.filterRow}
-          renderItem={({ item: e }) => (
-            <Pressable
-              onPress={() => setEstado(e.value)}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor: estado === e.value ? colors.primary : colors.card,
-                  borderColor: estado === e.value ? colors.primary : colors.border,
-                },
-              ]}
-            >
-              <Text style={[styles.chipText, { color: estado === e.value ? "#fff" : colors.foreground }]}>
-                {e.label}
-              </Text>
-            </Pressable>
-          )}
-        />
       </View>
 
       {stats && (
@@ -155,6 +130,11 @@ export default function BuscarScreen() {
         <Text style={[styles.resultsCount, { color: colors.mutedForeground }]}>
           {isLoading ? "Cargando..." : `${items.length} resultado${items.length !== 1 ? "s" : ""}`}
         </Text>
+        {hasActiveFilters && (
+          <Pressable onPress={() => { setTipo(""); setEstado(""); }} hitSlop={6}>
+            <Text style={[styles.clearText, { color: colors.primary }]}>Limpiar filtros</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -217,6 +197,59 @@ export default function BuscarScreen() {
         contentContainerStyle={[styles.list, isWeb && { paddingBottom: 34 }]}
         showsVerticalScrollIndicator={false}
       />
+
+      <FilterSheet visible={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filtrar resultados">
+        <Text style={[styles.filterGroupLabel, { color: colors.mutedForeground }]}>Tipo</Text>
+        <View style={styles.chipWrap}>
+          {TIPOS.map((t) => (
+            <Pressable
+              key={t.value || "all-tipo"}
+              onPress={() => setTipo(t.value)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: tipo === t.value ? colors.primary : colors.muted,
+                  borderColor: tipo === t.value ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: tipo === t.value ? "#fff" : colors.foreground }]}>
+                {t.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Text style={[styles.filterGroupLabel, { color: colors.mutedForeground, marginTop: 18 }]}>Estado</Text>
+        <View style={styles.chipWrap}>
+          {ESTADOS.map((e) => (
+            <Pressable
+              key={e.value || "all-estado"}
+              onPress={() => setEstado(e.value)}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: estado === e.value ? colors.primary : colors.muted,
+                  borderColor: estado === e.value ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: estado === e.value ? "#fff" : colors.foreground }]}>
+                {e.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <Pressable
+          onPress={() => setFiltersOpen(false)}
+          style={[styles.applyBtn, { backgroundColor: colors.primary }]}
+        >
+          <Text style={styles.applyBtnText}>
+            Ver {isLoading ? "resultados" : `${items.length} resultado${items.length !== 1 ? "s" : ""}`}
+          </Text>
+        </Pressable>
+      </FilterSheet>
     </View>
   );
 }
@@ -227,27 +260,22 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  heroRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 16,
+    paddingBottom: 16,
   },
   heroTitle: {
-    fontSize: 26,
+    fontSize: 20,
     fontFamily: "Inter_700Bold",
     color: "#ffffff",
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
+    marginBottom: 10,
   },
-  heroSub: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.7)",
-    marginTop: 2,
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   searchBox: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -256,20 +284,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 11,
   },
-  searchInput: {
+  inputWrap: {
     flex: 1,
+  },
+  searchInput: {
     fontSize: 15,
     fontFamily: "Inter_400Regular",
     padding: 0,
   },
-  filterSection: {
-    gap: 0,
-    paddingVertical: 10,
+  marqueeText: {
+    color: "rgba(255,255,255,0.55)",
   },
-  filterRow: {
-    paddingHorizontal: 16,
+  filterBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterDot: {
+    position: "absolute",
+    top: 7,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.9)",
+  },
+  filterGroupLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-    paddingVertical: 4,
   },
   chip: {
     paddingHorizontal: 14,
@@ -281,16 +335,34 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_500Medium",
   },
+  applyBtn: {
+    marginTop: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  applyBtnText: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    color: "#ffffff",
+  },
   resultsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingBottom: 8,
-    paddingTop: 4,
+    paddingTop: 10,
   },
   resultsCount: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+  },
+  clearText: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   list: {
     paddingBottom: 100,
