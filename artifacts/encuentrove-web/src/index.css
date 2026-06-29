@@ -392,3 +392,14 @@
     inset: -1px;
   }
 }
+
+/* MarqueeText (src/components/MarqueeText.tsx) — placeholder animado de los
+   buscadores. La distancia es por-instancia via la variable --marquee-distance. */
+@keyframes marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-1 * var(--marquee-distance, 0px)));
+  }
+}

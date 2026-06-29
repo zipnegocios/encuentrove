@@ -8,11 +8,15 @@ import { buildSerPath } from "@/lib/slug";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { ShareButtons } from "@/components/ShareButtons";
+import { MarqueeText } from "@/components/MarqueeText";
+
+const SEARCH_PLACEHOLDER = "Buscar por nombre, apellido o cedula...";
 
 const STATUS_LABELS: Record<EstadoPersona, string> = {
   BUSCADO: "Buscado/a",
@@ -27,6 +31,64 @@ const STATUS_COLORS: Record<EstadoPersona, string> = {
   EN_REFUGIO: "hsl(var(--status-refugio))",
   NECESITA_ASISTENCIA_MEDICA: "hsl(var(--status-medica))"
 };
+
+interface FilterSelectsProps {
+  tipo: string;
+  setTipo: (v: string) => void;
+  estado: string;
+  setEstado: (v: string) => void;
+  zona: string;
+  setZona: (v: string) => void;
+  zonasOptions: string[];
+  stacked?: boolean;
+}
+
+// Compartido entre los selects inline de desktop y el contenido del Drawer
+// off-canvas de mobile — mismo estado/logica, solo cambia el layout.
+function FilterSelects({ tipo, setTipo, estado, setEstado, zona, setZona, zonasOptions, stacked }: FilterSelectsProps) {
+  const triggerClass = stacked ? "h-12 w-full rounded-xl" : "h-12 w-full md:w-[140px] rounded-xl";
+  const triggerClassWide = stacked ? "h-12 w-full rounded-xl" : "h-12 w-full md:w-[180px] rounded-xl";
+  const suffix = stacked ? "-mobile" : "";
+
+  return (
+    <>
+      <Select value={tipo} onValueChange={setTipo}>
+        <SelectTrigger className={triggerClass} data-testid={`select-tipo${suffix}`}>
+          <SelectValue placeholder="Tipo" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">Todos</SelectItem>
+          <SelectItem value="PERSONA">Personas</SelectItem>
+          <SelectItem value="ANIMAL">Animales</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={estado} onValueChange={setEstado}>
+        <SelectTrigger className={triggerClassWide} data-testid={`select-estado${suffix}`}>
+          <SelectValue placeholder="Estado" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">Cualquier estado</SelectItem>
+          {Object.entries(STATUS_LABELS).map(([k, v]) => (
+            <SelectItem key={k} value={k}>{v}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={zona} onValueChange={setZona}>
+        <SelectTrigger className={triggerClassWide} data-testid={`select-zona${suffix}`}>
+          <SelectValue placeholder="Zona" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="ALL">Todas las zonas</SelectItem>
+          {zonasOptions.map(z => (
+            <SelectItem key={z} value={z}>{z}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  );
+}
 
 export default function BuscarPage() {
   const searchString = useSearch();
@@ -49,6 +111,9 @@ export default function BuscarPage() {
   const [results, setResults] = React.useState<SerVivienteConEstado[]>([]);
   const [total, setTotal] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const hasActiveFilters = tipoUrl !== "ALL" || estadoUrl !== "ALL" || zonaUrl !== "ALL";
 
   const liveSnapshot = React.useSyncExternalStore(subscribeLiveFeed, getLiveSnapshot);
 
@@ -135,66 +200,95 @@ export default function BuscarPage() {
       <div className="bg-white border-b sticky top-[68px] z-40 shadow-sm pb-4">
         <div className="container mx-auto px-4 md:px-6 pt-6">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 max-w-5xl mx-auto">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-muted-foreground" />
+            <div className="flex gap-2 flex-1">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <Input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-10 h-12 text-base rounded-xl"
+                  data-testid="input-search"
+                />
+                {query.length === 0 && (
+                  <div className="absolute inset-y-0 left-10 right-3 flex items-center pointer-events-none">
+                    <MarqueeText text={SEARCH_PLACEHOLDER} className="text-base text-muted-foreground" />
+                  </div>
+                )}
               </div>
-              <Input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por nombre, apellido o cedula..."
-                className="pl-10 h-12 text-base rounded-xl"
-                data-testid="input-search"
+
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setFiltersOpen(true)}
+                className="h-12 w-12 rounded-xl shrink-0 relative md:hidden"
+                data-testid="button-open-filters"
+              >
+                <Filter className="h-5 w-5" />
+                {hasActiveFilters && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
+                )}
+              </Button>
+            </div>
+
+            <div className="hidden md:flex gap-4">
+              <FilterSelects
+                tipo={tipo} setTipo={setTipo}
+                estado={estado} setEstado={setEstado}
+                zona={zona} setZona={setZona}
+                zonasOptions={zonasOptions}
               />
             </div>
-            
-            <div className="grid grid-cols-2 md:flex gap-4">
-              <Select value={tipo} onValueChange={setTipo}>
-                <SelectTrigger className="h-12 w-full md:w-[140px] rounded-xl" data-testid="select-tipo">
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos</SelectItem>
-                  <SelectItem value="PERSONA">Personas</SelectItem>
-                  <SelectItem value="ANIMAL">Animales</SelectItem>
-                </SelectContent>
-              </Select>
 
-              <Select value={estado} onValueChange={setEstado}>
-                <SelectTrigger className="h-12 w-full md:w-[180px] rounded-xl" data-testid="select-estado">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Cualquier estado</SelectItem>
-                  {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={zona} onValueChange={setZona}>
-                <SelectTrigger className="h-12 w-full md:w-[180px] rounded-xl col-span-2 md:col-span-1" data-testid="select-zona">
-                  <SelectValue placeholder="Zona" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todas las zonas</SelectItem>
-                  {zonasOptions.map(z => (
-                    <SelectItem key={z} value={z}>{z}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
             <Button type="submit" size="lg" className="h-12 rounded-xl px-8 hidden md:inline-flex" data-testid="button-search-submit">
               Filtrar
-            </Button>
-            <Button type="submit" size="lg" className="h-12 rounded-xl w-full md:hidden" data-testid="button-search-submit-mobile">
-              Aplicar Filtros
             </Button>
           </form>
         </div>
       </div>
+
+      <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Filtrar resultados</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-2 space-y-4">
+            <FilterSelects
+              tipo={tipo} setTipo={setTipo}
+              estado={estado} setEstado={setEstado}
+              zona={zona} setZona={setZona}
+              zonasOptions={zonasOptions}
+              stacked
+            />
+          </div>
+          <DrawerFooter>
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setQuery(""); setTipo("ALL"); setEstado("ALL"); setZona("ALL");
+                  setLocation("/buscar");
+                  setFiltersOpen(false);
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            )}
+            <Button
+              type="button"
+              className="h-12 rounded-xl"
+              onClick={() => { handleSearch(); setFiltersOpen(false); }}
+              data-testid="button-apply-filters"
+            >
+              Ver resultados
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       {/* Results */}
       <main className="flex-1 container mx-auto px-4 md:px-6 py-8">
