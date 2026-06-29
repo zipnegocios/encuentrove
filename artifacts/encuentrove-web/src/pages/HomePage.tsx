@@ -10,7 +10,8 @@ import { buildSerPath } from "@/lib/slug";
 import { Isotype } from "@/components/brand/Isotype";
 import { Footer } from "@/components/Footer";
 import { EmpresasColaboradoras } from "@/components/EmpresasColaboradoras";
-import { DescargaApp } from "@/components/DescargaApp";
+// Oculto temporalmente junto con su uso mas abajo — no eliminar.
+// import { DescargaApp } from "@/components/DescargaApp";
 import { ShareButtons } from "@/components/ShareButtons";
 
 export default function HomePage() {
@@ -251,7 +252,8 @@ export default function HomePage() {
         </div>
 
         <EmpresasColaboradoras />
-        <DescargaApp />
+        {/* Oculto temporalmente hasta tener las rutas de descarga correctas — no eliminar. */}
+        {/* <DescargaApp /> */}
 
         <div className="mt-16 max-w-2xl mx-auto text-center bg-white rounded-2xl border p-8 shadow-sm">
           <HeartHandshake className="w-8 h-8 text-primary mx-auto mb-4" />
