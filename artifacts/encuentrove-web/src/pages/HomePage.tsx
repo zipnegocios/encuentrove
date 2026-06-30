@@ -251,7 +251,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        <EmpresasColaboradoras />
+        {/* Oculto temporalmente — no eliminar. */}
+        {/* <EmpresasColaboradoras /> */}
         {/* Oculto temporalmente hasta tener las rutas de descarga correctas — no eliminar. */}
         {/* <DescargaApp /> */}
 

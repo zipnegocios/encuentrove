@@ -1,24 +1,26 @@
 import * as React from "react";
 import { Link } from "wouter";
-import { Code2 } from "lucide-react";
+// Oculto temporalmente — no eliminar.
+// import { Code2 } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+// Oculto temporalmente — no eliminar.
+// import {
+//   Dialog,
+//   DialogContent,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogDescription,
+//   DialogTrigger,
+// } from "@/components/ui/dialog";
+// import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
-const DEV_TEAM = ["Simon Salazar", "José Gabriel Pérez Cortez", "Gustavo Amarista"];
-
-function initials(name: string): string {
-  const parts = name.split(" ").filter(Boolean);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
+// Oculto temporalmente — no eliminar.
+// const DEV_TEAM = ["Simon Salazar", "José Gabriel Pérez Cortez", "Gustavo Amarista"];
+// function initials(name: string): string {
+//   const parts = name.split(" ").filter(Boolean);
+//   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+//   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+// }
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -43,7 +45,8 @@ export function Footer() {
             <Link href="/buscar" className="hover:text-primary transition-colors">
               Buscar
             </Link>
-            <span className="text-border hidden sm:inline">|</span>
+            {/* Oculto temporalmente — no eliminar. */}
+            {/* <span className="text-border hidden sm:inline">|</span>
             <span>
               © {year} ·{" "}
               <a
@@ -92,7 +95,7 @@ export function Footer() {
                   ))}
                 </ul>
               </DialogContent>
-            </Dialog>
+            </Dialog> */}
           </div>
         </div>
       </div>
